@@ -1,0 +1,190 @@
+{
+  "site": {
+    "name": "SmartCut",
+    "tagline": "Otimize seus cortes lineares"
+  },
+  "pricing": {
+    "title": "Planos e Preços",
+    "subtitle": "Escolha o plano ideal para você",
+    "popularLabel": "Mais popular",
+    "subscribe": "Assinar agora",
+    "loginToSubscribe": "Entre para assinar",
+    "monthly": {
+      "name": "Mensal",
+      "price": "R$ 9,90",
+      "period": "/mês",
+      "features": {
+        "calculator": "Acesso à calculadora de IMC",
+        "history": "Histórico de medições",
+        "recommendations": "Recomendações personalizadas",
+        "support": "Suporte por email"
+      }
+    },
+    "yearly": {
+      "name": "Anual",
+      "price": "R$ 99,90",
+      "period": "/ano",
+      "features": {
+        "allMonthly": "Todos os benefícios do plano mensal",
+        "savings": "Economia de 16%",
+        "reports": "Relatórios detalhados",
+        "prioritySupport": "Suporte prioritário"
+      }
+    }
+  },
+  "nav": {
+    "plans": "Planos",
+    "admin": "Admin",
+    "login": "Entrar",
+    "profile": {
+      "personalInfo": "Informações Pessoais",
+      "avatar": "Foto de Perfil",
+      "password": "Alterar Senha",
+      "notifications": "Notificações",
+      "subscription": "Assinatura",
+      "logout": "Sair"
+    }
+  },
+  "auth": {
+    "signUp": "Criar conta",
+    "signIn": "Entrar",
+    "email": "Email",
+    "password": "Senha",
+    "forgotPassword": "Esqueceu sua senha?",
+    "rememberPassword": "Lembrou sua senha?",
+    "noAccount": "Ainda não tem uma conta?",
+    "hasAccount": "Já tem uma conta?",
+    "continueWith": "Ou continue com",
+    "resetPassword": "Recuperar senha",
+    "resetSuccess": "Email de recuperação enviado! Verifique sua caixa de entrada.",
+    "backToLogin": "Voltar para o login"
+  },
+  "home": {
+    "hero": {
+      "title": "Otimize seus",
+      "subtitle": "cortes lineares",
+      "description": "Maximize o aproveitamento de materiais e reduza o desperdício com nossa calculadora de otimização de cortes. Solução profissional para marcenarias, serralherias e indústrias."
+    },
+    "features": {
+      "title": "Por que escolher nosso otimizador?",
+      "subtitle": "Descubra como podemos ajudar sua empresa a economizar tempo e dinheiro",
+      "wasteReduction": {
+        "title": "Redução de Desperdício",
+        "description": "Otimize o uso de materiais com nossos algoritmos avançados, reduzindo perdas em até 30%."
+      },
+      "timeSaving": {
+        "title": "Economia de Tempo",
+        "description": "Planeje seus cortes em minutos, não horas. Interface intuitiva e resultados instantâneos."
+      },
+      "profitability": {
+        "title": "Maior Lucratividade",
+        "description": "Aumente sua margem de lucro com melhor aproveitamento de materiais e processos mais eficientes."
+      }
+    },
+    "pricing": {
+      "title": "Planos que cabem no seu bolso",
+      "subtitle": "Escolha o plano ideal para suas necessidades",
+      "free": {
+        "title": "Gratuito",
+        "description": "Para pequenos projetos",
+        "price": "0",
+        "period": "/mês",
+        "features": [
+          "Até 5 projetos por mês",
+          "Recursos básicos"
+        ]
+      },
+      "pro": {
+        "title": "Profissional",
+        "description": "Para empresas em crescimento",
+        "price": "97",
+        "period": "/mês",
+        "popular": "Mais popular",
+        "features": [
+          "Projetos ilimitados",
+          "Suporte prioritário",
+          "Relatórios avançados"
+        ]
+      },
+      "enterprise": {
+        "title": "Empresarial",
+        "description": "Para grandes operações",
+        "price": "197",
+        "period": "/mês",
+        "features": [
+          "Tudo do plano Profissional",
+          "API para integração",
+          "Suporte 24/7"
+        ]
+      }
+    },
+    "testimonials": {
+      "title": "O que nossos clientes dizem",
+      "subtitle": "Histórias reais de empresas que transformaram seus processos"
+    }
+  },
+  "footer": {
+    "company": {
+      "title": "Sobre a SmartCut",
+      "description": "Soluções profissionais de otimização de corte para marcenarias, serralherias e indústrias."
+    },
+    "quickLinks": {
+      "title": "Links Rápidos",
+      "pricing": "Preços",
+      "calculator": "Calculadora IMC",
+      "optimizer": "Otimizador de Corte"
+    },
+    "legal": {
+      "title": "Legal",
+      "privacy": "Política de Privacidade",
+      "terms": "Termos de Serviço"
+    },
+    "contact": {
+      "title": "Contato",
+      "address": "Rua da Inovação, 123, Cidade Tech",
+      "phone": "+55 (11) 1234-5678",
+      "email": "contato@cutgo.com"
+    },
+    "rights": "Todos os direitos reservados."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "cutOptimizer": "Otimização de Corte",
+    "calculator": "Calculadora IMC"
+  },
+  "dashboard": {
+    "welcome": "Seja bem-vindo!"
+  },
+  "cutOptimizer": {
+    "title": "Otimização de Corte",
+    "loginRequired": "Faça login para usar o otimizador de cortes",
+    "registeredOnly": "Esta funcionalidade está disponível apenas para usuários cadastrados",
+    "client": {
+      "title": "Cliente",
+      "code": "Código",
+      "name": "Nome"
+    },
+    "material": {
+      "title": "Matéria Prima",
+      "quantity": "Quantidade",
+      "quantityShort": "Qtd",
+      "length": "Comprimento",
+      "lengthPlaceholder": "Comprimento (m)",
+      "description": "Descrição"
+    },
+    "cuts": {
+      "title": "Relação de Cortes",
+      "quantity": "Qtd",
+      "lengthPlaceholder": "Comprimento (m)",
+      "description": "Descrição",
+      "add": "Adicionar Corte"
+    },
+    "optimize": "Otimizar Cortes",
+    "results": {
+      "title": "Relação de Corte",
+      "print": "Imprimir Relação",
+      "material": "Matéria prima",
+      "waste": "Sobra"
+    }
+  }
+}

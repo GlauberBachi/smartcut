@@ -1,0 +1,190 @@
+{
+  "site": {
+    "name": "SmartCut",
+    "tagline": "Optimiza tus cortes lineales"
+  },
+  "pricing": {
+    "title": "Planes y Precios",
+    "subtitle": "Elige el plan ideal para ti",
+    "popularLabel": "Más popular",
+    "subscribe": "Suscribirse ahora",
+    "loginToSubscribe": "Inicia sesión para suscribirte",
+    "monthly": {
+      "name": "Mensual",
+      "price": "$ 9,90",
+      "period": "/mes",
+      "features": {
+        "calculator": "Acceso a la calculadora IMC",
+        "history": "Historial de mediciones",
+        "recommendations": "Recomendaciones personalizadas",
+        "support": "Soporte por email"
+      }
+    },
+    "yearly": {
+      "name": "Anual",
+      "price": "$ 99,90",
+      "period": "/año",
+      "features": {
+        "allMonthly": "Todos los beneficios del plan mensual",
+        "savings": "16% de ahorro",
+        "reports": "Informes detallados",
+        "prioritySupport": "Soporte prioritario"
+      }
+    }
+  },
+  "nav": {
+    "plans": "Planes",
+    "admin": "Admin",
+    "login": "Iniciar sesión",
+    "profile": {
+      "personalInfo": "Información Personal",
+      "avatar": "Foto de Perfil",
+      "password": "Cambiar Contraseña",
+      "notifications": "Notificaciones",
+      "subscription": "Suscripción",
+      "logout": "Cerrar sesión"
+    }
+  },
+  "auth": {
+    "signUp": "Registrarse",
+    "signIn": "Iniciar sesión",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "forgotPassword": "¿Olvidaste tu contraseña?",
+    "rememberPassword": "¿Recordaste tu contraseña?",
+    "noAccount": "¿No tienes una cuenta?",
+    "hasAccount": "¿Ya tienes una cuenta?",
+    "continueWith": "O continúa con",
+    "resetPassword": "Restablecer contraseña",
+    "resetSuccess": "¡Correo de restablecimiento enviado! Revisa tu bandeja de entrada.",
+    "backToLogin": "Volver al inicio de sesión"
+  },
+  "home": {
+    "hero": {
+      "title": "Optimiza tus",
+      "subtitle": "cortes lineales",
+      "description": "Maximiza el aprovechamiento de materiales y reduce el desperdicio con nuestra calculadora de optimización de cortes. Solución profesional para carpinterías, metalisterías e industrias."
+    },
+    "features": {
+      "title": "¿Por qué elegir nuestro optimizador?",
+      "subtitle": "Descubre cómo podemos ayudar a tu empresa a ahorrar tiempo y dinero",
+      "wasteReduction": {
+        "title": "Reducción de Desperdicios",
+        "description": "Optimiza el uso de materiales con nuestros algoritmos avanzados, reduciendo pérdidas hasta en un 30%."
+      },
+      "timeSaving": {
+        "title": "Ahorro de Tiempo",
+        "description": "Planifica tus cortes en minutos, no en horas. Interfaz intuitiva y resultados instantáneos."
+      },
+      "profitability": {
+        "title": "Mayor Rentabilidad",
+        "description": "Aumenta tu margen de beneficio con un mejor aprovechamiento de materiales y procesos más eficientes."
+      }
+    },
+    "pricing": {
+      "title": "Planes que se ajustan a tu presupuesto",
+      "subtitle": "Elige el plan ideal para tus necesidades",
+      "free": {
+        "title": "Gratuito",
+        "description": "Para proyectos pequeños",
+        "price": "0",
+        "period": "/mes",
+        "features": [
+          "Hasta 5 proyectos por mes",
+          "Funciones básicas"
+        ]
+      },
+      "pro": {
+        "title": "Profesional",
+        "description": "Para empresas en crecimiento",
+        "price": "97",
+        "period": "/mes",
+        "popular": "Más popular",
+        "features": [
+          "Proyectos ilimitados",
+          "Soporte prioritario",
+          "Informes avanzados"
+        ]
+      },
+      "enterprise": {
+        "title": "Empresarial",
+        "description": "Para grandes operaciones",
+        "price": "197",
+        "period": "/mes",
+        "features": [
+          "Todo lo del plan Profesional",
+          "Integración API",
+          "Soporte 24/7"
+        ]
+      }
+    },
+    "testimonials": {
+      "title": "Lo que dicen nuestros clientes",
+      "subtitle": "Historias reales de empresas que transformaron sus procesos"
+    }
+  },
+  "footer": {
+    "company": {
+      "title": "Sobre SmartCut",
+      "description": "Soluciones profesionales de optimización de corte para carpinterías, metalisterías e industrias."
+    },
+    "quickLinks": {
+      "title": "Enlaces Rápidos",
+      "pricing": "Precios",
+      "calculator": "Calculadora IMC",
+      "optimizer": "Optimizador de Corte"
+    },
+    "legal": {
+      "title": "Legal",
+      "privacy": "Política de Privacidad",
+      "terms": "Términos de Servicio"
+    },
+    "contact": {
+      "title": "Contacto",
+      "address": "Calle Innovación 123, Ciudad Tech",
+      "phone": "+34 912 345 678",
+      "email": "contacto@cutgo.com"
+    },
+    "rights": "Todos los derechos reservados."
+  },
+  "sidebar": {
+    "dashboard": "Panel de Control",
+    "cutOptimizer": "Optimizador de Corte",
+    "calculator": "Calculadora IMC"
+  },
+  "dashboard": {
+    "welcome": "¡Bienvenido!"
+  },
+  "cutOptimizer": {
+    "title": "Optimizador de Corte",
+    "loginRequired": "Inicia sesión para usar el optimizador de cortes",
+    "registeredOnly": "Esta función está disponible solo para usuarios registrados",
+    "client": {
+      "title": "Cliente",
+      "code": "Código",
+      "name": "Nombre"
+    },
+    "material": {
+      "title": "Materia Prima",
+      "quantity": "Cantidad",
+      "quantityShort": "Cant",
+      "length": "Longitud",
+      "lengthPlaceholder": "Longitud (m)",
+      "description": "Descripción"
+    },
+    "cuts": {
+      "title": "Lista de Cortes",
+      "quantity": "Cant",
+      "lengthPlaceholder": "Longitud (m)",
+      "description": "Descripción",
+      "add": "Agregar Corte"
+    },
+    "optimize": "Optimizar Cortes",
+    "results": {
+      "title": "Informe de Corte",
+      "print": "Imprimir Informe",
+      "material": "Materia prima",
+      "waste": "Sobrante"
+    }
+  }
+}

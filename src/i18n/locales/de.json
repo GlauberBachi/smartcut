@@ -1,0 +1,190 @@
+{
+  "site": {
+    "name": "SmartCut",
+    "tagline": "Optimieren Sie Ihre linearen Schnitte"
+  },
+  "pricing": {
+    "title": "Pläne und Preise",
+    "subtitle": "Wählen Sie den idealen Plan für Sie",
+    "popularLabel": "Am beliebtesten",
+    "subscribe": "Jetzt abonnieren",
+    "loginToSubscribe": "Anmelden zum Abonnieren",
+    "monthly": {
+      "name": "Monatlich",
+      "price": "9,90 €",
+      "period": "/Monat",
+      "features": {
+        "calculator": "Zugang zum BMI-Rechner",
+        "history": "Messungsverlauf",
+        "recommendations": "Personalisierte Empfehlungen",
+        "support": "E-Mail-Support"
+      }
+    },
+    "yearly": {
+      "name": "Jährlich",
+      "price": "99,90 €",
+      "period": "/Jahr",
+      "features": {
+        "allMonthly": "Alle Vorteile des monatlichen Plans",
+        "savings": "16% Ersparnis",
+        "reports": "Detaillierte Berichte",
+        "prioritySupport": "Prioritäts-Support"
+      }
+    }
+  },
+  "nav": {
+    "plans": "Tarife",
+    "admin": "Admin",
+    "login": "Anmelden",
+    "profile": {
+      "personalInfo": "Persönliche Informationen",
+      "avatar": "Profilbild",
+      "password": "Passwort ändern",
+      "notifications": "Benachrichtigungen",
+      "subscription": "Abonnement",
+      "logout": "Abmelden"
+    }
+  },
+  "auth": {
+    "signUp": "Registrieren",
+    "signIn": "Anmelden",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "forgotPassword": "Passwort vergessen?",
+    "rememberPassword": "Passwort wieder eingefallen?",
+    "noAccount": "Noch kein Konto?",
+    "hasAccount": "Bereits ein Konto?",
+    "continueWith": "Oder fortfahren mit",
+    "resetPassword": "Passwort zurücksetzen",
+    "resetSuccess": "E-Mail zum Zurücksetzen gesendet! Überprüfen Sie Ihren Posteingang.",
+    "backToLogin": "Zurück zur Anmeldung"
+  },
+  "home": {
+    "hero": {
+      "title": "Optimieren Sie Ihre",
+      "subtitle": "linearen Schnitte",
+      "description": "Maximieren Sie die Materialausnutzung und reduzieren Sie Verschnitt mit unserem Schnittoptimierungsrechner. Professionelle Lösung für Schreinereien, Metallbaubetriebe und Industrien."
+    },
+    "features": {
+      "title": "Warum unseren Optimierer wählen?",
+      "subtitle": "Entdecken Sie, wie wir Ihrem Unternehmen helfen können, Zeit und Geld zu sparen",
+      "wasteReduction": {
+        "title": "Abfallreduzierung",
+        "description": "Optimieren Sie die Materialnutzung mit unseren fortschrittlichen Algorithmen und reduzieren Sie Verluste um bis zu 30%."
+      },
+      "timeSaving": {
+        "title": "Zeitersparnis",
+        "description": "Planen Sie Ihre Schnitte in Minuten, nicht in Stunden. Intuitive Benutzeroberfläche und sofortige Ergebnisse."
+      },
+      "profitability": {
+        "title": "Höhere Rentabilität",
+        "description": "Steigern Sie Ihre Gewinnspanne durch bessere Materialausnutzung und effizientere Prozesse."
+      }
+    },
+    "pricing": {
+      "title": "Tarife, die in Ihr Budget passen",
+      "subtitle": "Wählen Sie den idealen Tarif für Ihre Bedürfnisse",
+      "free": {
+        "title": "Kostenlos",
+        "description": "Für kleine Projekte",
+        "price": "0",
+        "period": "/Monat",
+        "features": [
+          "Bis zu 5 Projekte pro Monat",
+          "Grundfunktionen"
+        ]
+      },
+      "pro": {
+        "title": "Professional",
+        "description": "Für wachsende Unternehmen",
+        "price": "97",
+        "period": "/Monat",
+        "popular": "Am beliebtesten",
+        "features": [
+          "Unbegrenzte Projekte",
+          "Prioritäts-Support",
+          "Erweiterte Berichte"
+        ]
+      },
+      "enterprise": {
+        "title": "Enterprise",
+        "description": "Für große Betriebe",
+        "price": "197",
+        "period": "/Monat",
+        "features": [
+          "Alles aus Professional",
+          "API-Integration",
+          "24/7 Support"
+        ]
+      }
+    },
+    "testimonials": {
+      "title": "Was unsere Kunden sagen",
+      "subtitle": "Echte Geschichten von Unternehmen, die ihre Prozesse transformiert haben"
+    }
+  },
+  "footer": {
+    "company": {
+      "title": "Über SmartCut",
+      "description": "Professionelle Schnittoptimierungslösungen für Schreinereien, Metallbaubetriebe und Industrien."
+    },
+    "quickLinks": {
+      "title": "Schnellzugriff",
+      "pricing": "Preise",
+      "calculator": "BMI-Rechner",
+      "optimizer": "Schnittoptimierer"
+    },
+    "legal": {
+      "title": "Rechtliches",
+      "privacy": "Datenschutzerklärung",
+      "terms": "Nutzungsbedingungen"
+    },
+    "contact": {
+      "title": "Kontakt",
+      "address": "Innovationsstraße 123, Tech Stadt",
+      "phone": "+49 30 1234 5678",
+      "email": "kontakt@cutgo.com"
+    },
+    "rights": "Alle Rechte vorbehalten."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "cutOptimizer": "Schnittoptimierer",
+    "calculator": "BMI-Rechner"
+  },
+  "dashboard": {
+    "welcome": "Willkommen!"
+  },
+  "cutOptimizer": {
+    "title": "Schnittoptimierer",
+    "loginRequired": "Bitte melden Sie sich an, um den Schnittoptimierer zu nutzen",
+    "registeredOnly": "Diese Funktion ist nur für registrierte Benutzer verfügbar",
+    "client": {
+      "title": "Kunde",
+      "code": "Code",
+      "name": "Name"
+    },
+    "material": {
+      "title": "Rohmaterial",
+      "quantity": "Menge",
+      "quantityShort": "Mng",
+      "length": "Länge",
+      "lengthPlaceholder": "Länge (m)",
+      "description": "Beschreibung"
+    },
+    "cuts": {
+      "title": "Schnittliste",
+      "quantity": "Mng",
+      "lengthPlaceholder": "Länge (m)",
+      "description": "Beschreibung",
+      "add": "Schnitt hinzufügen"
+    },
+    "optimize": "Schnitte optimieren",
+    "results": {
+      "title": "Schnittbericht",
+      "print": "Bericht drucken",
+      "material": "Rohmaterial",
+      "waste": "Verschnitt"
+    }
+  }
+}

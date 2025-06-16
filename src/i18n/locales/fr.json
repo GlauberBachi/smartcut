@@ -1,0 +1,190 @@
+{
+  "site": {
+    "name": "SmartCut",
+    "tagline": "Optimisez vos coupes linéaires"
+  },
+  "pricing": {
+    "title": "Plans et Tarifs",
+    "subtitle": "Choisissez le plan idéal pour vous",
+    "popularLabel": "Plus populaire",
+    "subscribe": "S'abonner maintenant",
+    "loginToSubscribe": "Connectez-vous pour vous abonner",
+    "monthly": {
+      "name": "Mensuel",
+      "price": "9,90 €",
+      "period": "/mois",
+      "features": {
+        "calculator": "Accès à la calculatrice IMC",
+        "history": "Historique des mesures",
+        "recommendations": "Recommandations personnalisées",
+        "support": "Support par email"
+      }
+    },
+    "yearly": {
+      "name": "Annuel",
+      "price": "99,90 €",
+      "period": "/an",
+      "features": {
+        "allMonthly": "Tous les avantages du plan mensuel",
+        "savings": "16% d'économie",
+        "reports": "Rapports détaillés",
+        "prioritySupport": "Support prioritaire"
+      }
+    }
+  },
+  "nav": {
+    "plans": "Forfaits",
+    "admin": "Admin",
+    "login": "Connexion",
+    "profile": {
+      "personalInfo": "Informations Personnelles",
+      "avatar": "Photo de Profil",
+      "password": "Changer le Mot de Passe",
+      "notifications": "Notifications",
+      "subscription": "Abonnement",
+      "logout": "Déconnexion"
+    }
+  },
+  "auth": {
+    "signUp": "S'inscrire",
+    "signIn": "Se connecter",
+    "email": "Email",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "rememberPassword": "Vous vous souvenez de votre mot de passe ?",
+    "noAccount": "Vous n'avez pas de compte ?",
+    "hasAccount": "Vous avez déjà un compte ?",
+    "continueWith": "Ou continuez avec",
+    "resetPassword": "Réinitialiser le mot de passe",
+    "resetSuccess": "Email de réinitialisation envoyé ! Vérifiez votre boîte de réception.",
+    "backToLogin": "Retour à la connexion"
+  },
+  "home": {
+    "hero": {
+      "title": "Optimisez vos",
+      "subtitle": "coupes linéaires",
+      "description": "Maximisez l'utilisation des matériaux et réduisez les déchets avec notre calculateur d'optimisation de coupe. Solution professionnelle pour la menuiserie, la métallerie et l'industrie."
+    },
+    "features": {
+      "title": "Pourquoi choisir notre optimiseur ?",
+      "subtitle": "Découvrez comment nous pouvons aider votre entreprise à économiser du temps et de l'argent",
+      "wasteReduction": {
+        "title": "Réduction des Déchets",
+        "description": "Optimisez l'utilisation des matériaux avec nos algorithmes avancés, réduisant les pertes jusqu'à 30%."
+      },
+      "timeSaving": {
+        "title": "Gain de Temps",
+        "description": "Planifiez vos coupes en minutes, pas en heures. Interface intuitive et résultats instantanés."
+      },
+      "profitability": {
+        "title": "Rentabilité Accrue",
+        "description": "Augmentez votre marge bénéficiaire avec une meilleure utilisation des matériaux et des processus plus efficaces."
+      }
+    },
+    "pricing": {
+      "title": "Des forfaits adaptés à votre budget",
+      "subtitle": "Choisissez le forfait idéal pour vos besoins",
+      "free": {
+        "title": "Gratuit",
+        "description": "Pour les petits projets",
+        "price": "0",
+        "period": "/mois",
+        "features": [
+          "Jusqu'à 5 projets par mois",
+          "Fonctionnalités de base"
+        ]
+      },
+      "pro": {
+        "title": "Professionnel",
+        "description": "Pour les entreprises en croissance",
+        "price": "97",
+        "period": "/mois",
+        "popular": "Plus populaire",
+        "features": [
+          "Projets illimités",
+          "Support prioritaire",
+          "Rapports avancés"
+        ]
+      },
+      "enterprise": {
+        "title": "Entreprise",
+        "description": "Pour les grandes opérations",
+        "price": "197",
+        "period": "/mois",
+        "features": [
+          "Tout du plan Professionnel",
+          "Intégration API",
+          "Support 24/7"
+        ]
+      }
+    },
+    "testimonials": {
+      "title": "Ce que disent nos clients",
+      "subtitle": "Histoires réelles d'entreprises qui ont transformé leurs processus"
+    }
+  },
+  "footer": {
+    "company": {
+      "title": "À propos de SmartCut",
+      "description": "Solutions professionnelles d'optimisation de coupe pour la menuiserie, la métallerie et l'industrie."
+    },
+    "quickLinks": {
+      "title": "Liens Rapides",
+      "pricing": "Tarifs",
+      "calculator": "Calculateur IMC",
+      "optimizer": "Optimiseur de Coupe"
+    },
+    "legal": {
+      "title": "Légal",
+      "privacy": "Politique de Confidentialité",
+      "terms": "Conditions d'Utilisation"
+    },
+    "contact": {
+      "title": "Contact",
+      "address": "123 Rue de l'Innovation, Ville Tech",
+      "phone": "+33 1 23 45 67 89",
+      "email": "contact@cutgo.com"
+    },
+    "rights": "Tous droits réservés."
+  },
+  "sidebar": {
+    "dashboard": "Tableau de Bord",
+    "cutOptimizer": "Optimiseur de Coupe",
+    "calculator": "Calculateur IMC"
+  },
+  "dashboard": {
+    "welcome": "Bienvenue !"
+  },
+  "cutOptimizer": {
+    "title": "Optimiseur de Coupe",
+    "loginRequired": "Connectez-vous pour utiliser l'optimiseur de coupes",
+    "registeredOnly": "Cette fonctionnalité est réservée aux utilisateurs inscrits",
+    "client": {
+      "title": "Client",
+      "code": "Code",
+      "name": "Nom"
+    },
+    "material": {
+      "title": "Matière Première",
+      "quantity": "Quantité",
+      "quantityShort": "Qté",
+      "length": "Longueur",
+      "lengthPlaceholder": "Longueur (m)",
+      "description": "Description"
+    },
+    "cuts": {
+      "title": "Liste des Coupes",
+      "quantity": "Qté",
+      "lengthPlaceholder": "Longueur (m)",
+      "description": "Description",
+      "add": "Ajouter une Coupe"
+    },
+    "optimize": "Optimiser les Coupes",
+    "results": {
+      "title": "Rapport de Coupe",
+      "print": "Imprimer le Rapport",
+      "material": "Matière première",
+      "waste": "Chute"
+    }
+  }
+}

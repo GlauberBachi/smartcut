@@ -1,0 +1,190 @@
+{
+  "site": {
+    "name": "SmartCut",
+    "tagline": "Ottimizza i tuoi tagli lineari"
+  },
+  "pricing": {
+    "title": "Piani e Prezzi",
+    "subtitle": "Scegli il piano ideale per te",
+    "popularLabel": "Più popolare",
+    "subscribe": "Abbonati ora",
+    "loginToSubscribe": "Accedi per abbonarti",
+    "monthly": {
+      "name": "Mensile",
+      "price": "€ 9,90",
+      "period": "/mese",
+      "features": {
+        "calculator": "Accesso alla calcolatrice BMI",
+        "history": "Cronologia delle misurazioni",
+        "recommendations": "Raccomandazioni personalizzate",
+        "support": "Supporto via email"
+      }
+    },
+    "yearly": {
+      "name": "Annuale",
+      "price": "€ 99,90",
+      "period": "/anno",
+      "features": {
+        "allMonthly": "Tutti i benefici del piano mensile",
+        "savings": "16% di risparmio",
+        "reports": "Report dettagliati",
+        "prioritySupport": "Supporto prioritario"
+      }
+    }
+  },
+  "nav": {
+    "plans": "Piani",
+    "admin": "Admin",
+    "login": "Accedi",
+    "profile": {
+      "personalInfo": "Informazioni Personali",
+      "avatar": "Foto Profilo",
+      "password": "Cambia Password",
+      "notifications": "Notifiche",
+      "subscription": "Abbonamento",
+      "logout": "Esci"
+    }
+  },
+  "auth": {
+    "signUp": "Registrati",
+    "signIn": "Accedi",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Hai dimenticato la password?",
+    "rememberPassword": "Ricordi la password?",
+    "noAccount": "Non hai un account?",
+    "hasAccount": "Hai già un account?",
+    "continueWith": "O continua con",
+    "resetPassword": "Reimposta password",
+    "resetSuccess": "Email di reset inviata! Controlla la tua casella di posta.",
+    "backToLogin": "Torna al login"
+  },
+  "home": {
+    "hero": {
+      "title": "Ottimizza i tuoi",
+      "subtitle": "tagli lineari",
+      "description": "Massimizza l'utilizzo dei materiali e riduci gli sprechi con il nostro calcolatore di ottimizzazione dei tagli. Soluzione professionale per falegnamerie, carpenterie e industrie."
+    },
+    "features": {
+      "title": "Perché scegliere il nostro ottimizzatore?",
+      "subtitle": "Scopri come possiamo aiutare la tua azienda a risparmiare tempo e denaro",
+      "wasteReduction": {
+        "title": "Riduzione degli Sprechi",
+        "description": "Ottimizza l'uso dei materiali con i nostri algoritmi avanzati, riducendo le perdite fino al 30%."
+      },
+      "timeSaving": {
+        "title": "Risparmio di Tempo",
+        "description": "Pianifica i tuoi tagli in minuti, non in ore. Interfaccia intuitiva e risultati istantanei."
+      },
+      "profitability": {
+        "title": "Maggiore Redditività",
+        "description": "Aumenta il tuo margine di profitto con un migliore utilizzo dei materiali e processi più efficienti."
+      }
+    },
+    "pricing": {
+      "title": "Piani adatti al tuo budget",
+      "subtitle": "Scegli il piano ideale per le tue esigenze",
+      "free": {
+        "title": "Gratuito",
+        "description": "Per piccoli progetti",
+        "price": "0",
+        "period": "/mese",
+        "features": [
+          "Fino a 5 progetti al mese",
+          "Funzionalità di base"
+        ]
+      },
+      "pro": {
+        "title": "Professionale",
+        "description": "Per aziende in crescita",
+        "price": "97",
+        "period": "/mese",
+        "popular": "Più popolare",
+        "features": [
+          "Progetti illimitati",
+          "Supporto prioritario",
+          "Report avanzati"
+        ]
+      },
+      "enterprise": {
+        "title": "Enterprise",
+        "description": "Per grandi operazioni",
+        "price": "197",
+        "period": "/mese",
+        "features": [
+          "Tutto del piano Professionale",
+          "Integrazione API",
+          "Supporto 24/7"
+        ]
+      }
+    },
+    "testimonials": {
+      "title": "Cosa dicono i nostri clienti",
+      "subtitle": "Storie reali di aziende che hanno trasformato i loro processi"
+    }
+  },
+  "footer": {
+    "company": {
+      "title": "Chi è SmartCut",
+      "description": "Soluzioni professionali di ottimizzazione dei tagli per falegnamerie, carpenterie e industrie."
+    },
+    "quickLinks": {
+      "title": "Link Rapidi",
+      "pricing": "Prezzi",
+      "calculator": "Calcolatore BMI",
+      "optimizer": "Ottimizzatore di Taglio"
+    },
+    "legal": {
+      "title": "Legale",
+      "privacy": "Informativa sulla Privacy",
+      "terms": "Termini di Servizio"
+    },
+    "contact": {
+      "title": "Contatti",
+      "address": "Via dell'Innovazione 123, Città Tech",
+      "phone": "+39 02 1234 5678",
+      "email": "contatto@cutgo.com"
+    },
+    "rights": "Tutti i diritti riservati."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "cutOptimizer": "Ottimizzatore di Taglio",
+    "calculator": "Calcolatore BMI"
+  },
+  "dashboard": {
+    "welcome": "Benvenuto!"
+  },
+  "cutOptimizer": {
+    "title": "Ottimizzatore di Taglio",
+    "loginRequired": "Accedi per utilizzare l'ottimizzatore di taglio",
+    "registeredOnly": "Questa funzionalità è disponibile solo per gli utenti registrati",
+    "client": {
+      "title": "Cliente",
+      "code": "Codice",
+      "name": "Nome"
+    },
+    "material": {
+      "title": "Materia Prima",
+      "quantity": "Quantità",
+      "quantityShort": "Qtà",
+      "length": "Lunghezza",
+      "lengthPlaceholder": "Lunghezza (m)",
+      "description": "Descrizione"
+    },
+    "cuts": {
+      "title": "Lista dei Tagli",
+      "quantity": "Qtà",
+      "lengthPlaceholder": "Lunghezza (m)",
+      "description": "Descrizione",
+      "add": "Aggiungi Taglio"
+    },
+    "optimize": "Ottimizza Tagli",
+    "results": {
+      "title": "Rapporto di Taglio",
+      "print": "Stampa Rapporto",
+      "material": "Materia prima",
+      "waste": "Scarto"
+    }
+  }
+}

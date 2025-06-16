@@ -1,0 +1,190 @@
+{
+  "site": {
+    "name": "SmartCut",
+    "tagline": "优化您的线性切割"
+  },
+  "pricing": {
+    "title": "计划和定价",
+    "subtitle": "选择最适合您的计划",
+    "popularLabel": "最受欢迎",
+    "subscribe": "立即订阅",
+    "loginToSubscribe": "登录以订阅",
+    "monthly": {
+      "name": "月付",
+      "price": "¥69",
+      "period": "/月",
+      "features": {
+        "calculator": "访问 BMI 计算器",
+        "history": "测量历史记录",
+        "recommendations": "个性化建议",
+        "support": "电子邮件支持"
+      }
+    },
+    "yearly": {
+      "name": "年付",
+      "price": "¥699",
+      "period": "/年",
+      "features": {
+        "allMonthly": "所有月付计划权益",
+        "savings": "节省16%",
+        "reports": "详细报告",
+        "prioritySupport": "优先支持"
+      }
+    }
+  },
+  "nav": {
+    "plans": "计划",
+    "admin": "管理",
+    "login": "登录",
+    "profile": {
+      "personalInfo": "个人信息",
+      "avatar": "头像",
+      "password": "修改密码",
+      "notifications": "通知",
+      "subscription": "订阅",
+      "logout": "退出"
+    }
+  },
+  "auth": {
+    "signUp": "注册",
+    "signIn": "登录",
+    "email": "邮箱",
+    "password": "密码",
+    "forgotPassword": "忘记密码？",
+    "rememberPassword": "记住密码？",
+    "noAccount": "没有账号？",
+    "hasAccount": "已有账号？",
+    "continueWith": "或继续使用",
+    "resetPassword": "重置密码",
+    "resetSuccess": "密码重置邮件已发送！请检查您的收件箱。",
+    "backToLogin": "返回登录"
+  },
+  "home": {
+    "hero": {
+      "title": "优化您的",
+      "subtitle": "线性切割",
+      "description": "使用我们的切割优化计算器最大限度地利用材料并减少浪费。为木工、金属加工和工业提供专业解决方案。"
+    },
+    "features": {
+      "title": "为什么选择我们的优化器？",
+      "subtitle": "了解我们如何帮助您的公司节省时间和金钱",
+      "wasteReduction": {
+        "title": "减少浪费",
+        "description": "使用我们的先进算法优化材料使用，减少高达30%的损失。"
+      },
+      "timeSaving": {
+        "title": "节省时间",
+        "description": "在几分钟内规划您的切割，而不是几小时。直观的界面和即时结果。"
+      },
+      "profitability": {
+        "title": "更高利润",
+        "description": "通过更好的材料利用和更高效的流程提高利润率。"
+      }
+    },
+    "pricing": {
+      "title": "适合您预算的计划",
+      "subtitle": "选择最适合您需求的计划",
+      "free": {
+        "title": "免费",
+        "description": "适用于小型项目",
+        "price": "0",
+        "period": "/月",
+        "features": [
+          "每月最多5个项目",
+          "基本功能"
+        ]
+      },
+      "pro": {
+        "title": "专业版",
+        "description": "适用于成长中的企业",
+        "price": "97",
+        "period": "/月",
+        "popular": "最受欢迎",
+        "features": [
+          "无限项目",
+          "优先支持",
+          "高级报告"
+        ]
+      },
+      "enterprise": {
+        "title": "企业版",
+        "description": "适用于大型运营",
+        "price": "197",
+        "period": "/月",
+        "features": [
+          "专业版所有功能",
+          "API集成",
+          "24/7支持"
+        ]
+      }
+    },
+    "testimonials": {
+      "title": "客户评价",
+      "subtitle": "转变其流程的公司的真实故事"
+    }
+  },
+  "footer": {
+    "company": {
+      "title": "关于 SmartCut",
+      "description": "为木工、金属加工和工业提供专业的切割优化解决方案。"
+    },
+    "quickLinks": {
+      "title": "快速链接",
+      "pricing": "定价",
+      "calculator": "BMI 计算器",
+      "optimizer": "切割优化器"
+    },
+    "legal": {
+      "title": "法律",
+      "privacy": "隐私政策",
+      "terms": "服务条款"
+    },
+    "contact": {
+      "title": "联系我们",
+      "address": "创新街123号，科技城",
+      "phone": "+86 10 1234 5678",
+      "email": "contact@cutgo.com"
+    },
+    "rights": "保留所有权利。"
+  },
+  "sidebar": {
+    "dashboard": "仪表板",
+    "cutOptimizer": "切割优化器",
+    "calculator": "BMI 计算器"
+  },
+  "dashboard": {
+    "welcome": "欢迎！"
+  },
+  "cutOptimizer": {
+    "title": "切割优化器",
+    "loginRequired": "请登录以使用切割优化器",
+    "registeredOnly": "此功能仅适用于注册用户",
+    "client": {
+      "title": "客户",
+      "code": "代码",
+      "name": "名称"
+    },
+    "material": {
+      "title": "原材料",
+      "quantity": "数量",
+      "quantityShort": "数量",
+      "length": "长度",
+      "lengthPlaceholder": "长度 (m)",
+      "description": "描述"
+    },
+    "cuts": {
+      "title": "切割清单",
+      "quantity": "数量",
+      "lengthPlaceholder": "长度 (m)",
+      "description": "描述",
+      "add": "添加切割"
+    },
+    "optimize": "优化切割",
+    "results": {
+      "title": "切割报告",
+      "print": "打印报告",
+      "material": "原材料",
+      "waste": "废料"
+    }
+  }
+}

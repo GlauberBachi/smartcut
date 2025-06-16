@@ -1,0 +1,95 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Sidebar from './components/Sidebar';
+import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
+import CutOptimizer from './pages/CutOptimizer';
+import Pricing from './pages/Pricing';
+import Notifications from './pages/Notifications';
+import Profile from './pages/Profile';
+import Admin from './pages/Admin';
+import Success from './pages/Success';
+import Footer from './components/Footer';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './contexts/AuthContext';
+
+const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary-600"></div>
+      </div>
+    );
+  }
+  
+  return user ? <>{children}</> : <Navigate to="/" />;
+};
+
+const AppContent = () => {
+  const { user } = useAuth();
+
+  return (
+    <div className="flex min-h-screen flex-col bg-gradient-to-br from-gray-50 to-tech-50">
+      <div className="print:hidden">
+        <Navbar />
+      </div>
+      <div className="flex flex-1">
+        {user && <Sidebar />}
+        <div className="flex-1">
+          <Routes>
+            <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Home />} />
+            <Route path="/dashboard" element={
+              <PrivateRoute>
+                <Dashboard />
+              </PrivateRoute>
+            } />
+            <Route path="/cut-optimizer" element={
+              <PrivateRoute>
+                <CutOptimizer />
+              </PrivateRoute>
+            } />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/success" element={<Success />} />
+            <Route path="/pricing" element={<Pricing />} />
+            <Route path="/notifications" element={
+              <PrivateRoute>
+                <Notifications />
+              </PrivateRoute>
+            } />
+            <Route path="/success" element={<Success />} />
+            <Route path="/profile" element={
+              <PrivateRoute>
+                <Profile />
+              </PrivateRoute>
+            } />
+            <Route path="/success" element={<Success />} />
+            <Route path="/admin" element={
+              <PrivateRoute>
+                <Admin />
+              </PrivateRoute>
+            } />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
+      </div>
+      <div className="print:hidden">
+        <Footer />
+      </div>
+    </div>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;

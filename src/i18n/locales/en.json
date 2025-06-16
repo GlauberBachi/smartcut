@@ -1,0 +1,190 @@
+{
+  "site": {
+    "name": "SmartCut",
+    "tagline": "Optimize your linear cuts"
+  },
+  "pricing": {
+    "title": "Plans and Pricing",
+    "subtitle": "Choose the ideal plan for you",
+    "popularLabel": "Most popular",
+    "subscribe": "Subscribe now",
+    "loginToSubscribe": "Login to subscribe",
+    "monthly": {
+      "name": "Monthly",
+      "price": "$9.90",
+      "period": "/month",
+      "features": {
+        "calculator": "Access to BMI calculator",
+        "history": "Measurement history",
+        "recommendations": "Personalized recommendations",
+        "support": "Email support"
+      }
+    },
+    "yearly": {
+      "name": "Yearly",
+      "price": "$99.90",
+      "period": "/year",
+      "features": {
+        "allMonthly": "All monthly plan benefits",
+        "savings": "16% savings",
+        "reports": "Detailed reports",
+        "prioritySupport": "Priority support"
+      }
+    }
+  },
+  "nav": {
+    "plans": "Plans",
+    "admin": "Admin",
+    "login": "Login",
+    "profile": {
+      "personalInfo": "Personal Information",
+      "avatar": "Profile Picture",
+      "password": "Change Password",
+      "notifications": "Notifications",
+      "subscription": "Subscription",
+      "logout": "Logout"
+    }
+  },
+  "auth": {
+    "signUp": "Sign Up",
+    "signIn": "Sign In",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot your password?",
+    "rememberPassword": "Remember your password?",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "continueWith": "Or continue with",
+    "resetPassword": "Reset password",
+    "resetSuccess": "Password reset email sent! Check your inbox.",
+    "backToLogin": "Back to login"
+  },
+  "home": {
+    "hero": {
+      "title": "Optimize your",
+      "subtitle": "linear cuts",
+      "description": "Maximize material utilization and reduce waste with our cutting optimization calculator. Professional solution for woodworking, metalworking, and industries."
+    },
+    "features": {
+      "title": "Why choose our optimizer?",
+      "subtitle": "Discover how we can help your company save time and money",
+      "wasteReduction": {
+        "title": "Waste Reduction",
+        "description": "Optimize material usage with our advanced algorithms, reducing losses by up to 30%."
+      },
+      "timeSaving": {
+        "title": "Time Saving",
+        "description": "Plan your cuts in minutes, not hours. Intuitive interface and instant results."
+      },
+      "profitability": {
+        "title": "Higher Profitability",
+        "description": "Increase your profit margin with better material utilization and more efficient processes."
+      }
+    },
+    "pricing": {
+      "title": "Plans that fit your budget",
+      "subtitle": "Choose the ideal plan for your needs",
+      "free": {
+        "title": "Free",
+        "description": "For small projects",
+        "price": "0",
+        "period": "/month",
+        "features": [
+          "Up to 5 projects per month",
+          "Basic features"
+        ]
+      },
+      "pro": {
+        "title": "Professional",
+        "description": "For growing businesses",
+        "price": "97",
+        "period": "/month",
+        "popular": "Most popular",
+        "features": [
+          "Unlimited projects",
+          "Priority support",
+          "Advanced reports"
+        ]
+      },
+      "enterprise": {
+        "title": "Enterprise",
+        "description": "For large operations",
+        "price": "197",
+        "period": "/month",
+        "features": [
+          "Everything in Professional",
+          "API integration",
+          "24/7 support"
+        ]
+      }
+    },
+    "testimonials": {
+      "title": "What our customers say",
+      "subtitle": "Real stories from companies that transformed their processes"
+    }
+  },
+  "footer": {
+    "company": {
+      "title": "About SmartCut",
+      "description": "Professional cutting optimization solutions for woodworking, metalworking, and industries."
+    },
+    "quickLinks": {
+      "title": "Quick Links",
+      "pricing": "Pricing",
+      "calculator": "BMI Calculator",
+      "optimizer": "Cut Optimizer"
+    },
+    "legal": {
+      "title": "Legal",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service"
+    },
+    "contact": {
+      "title": "Contact",
+      "address": "123 Innovation Street, Tech City",
+      "phone": "+1 (555) 123-4567",
+      "email": "contact@cutgo.com"
+    },
+    "rights": "All rights reserved."
+  },
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "cutOptimizer": "Cut Optimizer",
+    "calculator": "BMI Calculator"
+  },
+  "dashboard": {
+    "welcome": "Welcome!"
+  },
+  "cutOptimizer": {
+    "title": "Cut Optimizer",
+    "loginRequired": "Please login to use the cut optimizer",
+    "registeredOnly": "This feature is only available for registered users",
+    "client": {
+      "title": "Client",
+      "code": "Code",
+      "name": "Name"
+    },
+    "material": {
+      "title": "Raw Material",
+      "quantity": "Quantity",
+      "quantityShort": "Qty",
+      "length": "Length",
+      "lengthPlaceholder": "Length (m)",
+      "description": "Description"
+    },
+    "cuts": {
+      "title": "Cut List",
+      "quantity": "Qty",
+      "lengthPlaceholder": "Length (m)",
+      "description": "Description",
+      "add": "Add Cut"
+    },
+    "optimize": "Optimize Cuts",
+    "results": {
+      "title": "Cut Report",
+      "print": "Print Report",
+      "material": "Raw material",
+      "waste": "Waste"
+    }
+  }
+}
