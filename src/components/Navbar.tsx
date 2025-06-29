@@ -17,6 +17,7 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -79,6 +80,7 @@ const Navbar = () => {
 
   useEffect(() => {
     setShowProfileMenu(false);
+    setIsProfileMenuOpen(false);
     setIsMobileMenuOpen(false);
   }, [user]);
 
@@ -86,6 +88,7 @@ const Navbar = () => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
+        setIsProfileMenuOpen(false);
       }
     };
 
@@ -108,6 +111,7 @@ const Navbar = () => {
   };
 
   const handleProfileNavigation = (tab: string) => {
+    setIsProfileMenuOpen(false);
     setShowProfileMenu(false);
     // Use setTimeout to ensure state update happens first
     setTimeout(() => {
@@ -116,6 +120,7 @@ const Navbar = () => {
   };
 
   const handleNotificationsNavigation = () => {
+    setIsProfileMenuOpen(false);
     setShowProfileMenu(false);
     setTimeout(() => {
       navigate('/notifications');
@@ -123,6 +128,7 @@ const Navbar = () => {
   };
 
   const handlePricingNavigation = () => {
+    setIsProfileMenuOpen(false);
     setShowProfileMenu(false);
     setTimeout(() => {
       navigate('/pricing');
@@ -130,6 +136,7 @@ const Navbar = () => {
   };
 
   const handleSignOutClick = async () => {
+    setIsProfileMenuOpen(false);
     setShowProfileMenu(false);
     try {
       await signOut();
@@ -138,6 +145,20 @@ const Navbar = () => {
       console.error('Error signing out:', error);
       navigate('/');
     }
+  };
+
+  const handleProfileMenuToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newState = !isProfileMenuOpen;
+    setIsProfileMenuOpen(newState);
+    setShowProfileMenu(newState);
+  };
+
+  const handleProfileMenuItemClick = (action: () => void) => {
+    setIsProfileMenuOpen(false);
+    setShowProfileMenu(false);
+    action();
   };
 
   return (
@@ -178,8 +199,9 @@ const Navbar = () => {
                       {user.email}
                     </span>
                     <button
-                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      onClick={handleProfileMenuToggle}
                       className="flex items-center space-x-2 px-2 py-1 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors duration-200"
+                      type="button"
                     >
                       <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                         {avatarUrl ? (
@@ -204,46 +226,64 @@ const Navbar = () => {
                   </div>
 
                   {/* Profile dropdown menu */}
-                  {showProfileMenu && (
+                  {isProfileMenuOpen && (
                     <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                       <div className="py-1">
                         <button
-                          onClick={() => handleProfileNavigation('personal')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProfileMenuItemClick(() => handleProfileNavigation('personal'));
+                          }}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <User className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.personalInfo')}</span>
                         </button>
                         <button
-                          onClick={() => handleProfileNavigation('avatar')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProfileMenuItemClick(() => handleProfileNavigation('avatar'));
+                          }}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Camera className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.avatar')}</span>
                         </button>
                         <button
-                          onClick={handleNotificationsNavigation}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProfileMenuItemClick(handleNotificationsNavigation);
+                          }}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.notifications')}</span>
                         </button>
                         <button
-                          onClick={() => handleProfileNavigation('password')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProfileMenuItemClick(() => handleProfileNavigation('password'));
+                          }}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Key className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.password')}</span>
                         </button>
                         <button
-                          onClick={handlePricingNavigation}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProfileMenuItemClick(handlePricingNavigation);
+                          }}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           <span>Assinaturas</span>
                         </button>
                         <button 
-                          onClick={() => handleProfileNavigation('danger')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProfileMenuItemClick(() => handleProfileNavigation('danger'));
+                          }}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -251,7 +291,10 @@ const Navbar = () => {
                         </button>
                         <hr className="my-1" />
                         <button
-                          onClick={handleSignOutClick}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleProfileMenuItemClick(handleSignOutClick);
+                          }}
                           className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                         >
                           {t('nav.profile.logout')}
