@@ -53,9 +53,9 @@ const getReadableErrorMessage = (error: AuthError): string => {
 };
 
 const createStripeCustomer = async (accessToken: string) => {
-  const maxRetries = 3;
+  const maxRetries = 5;
   let retryCount = 0;
-  let delay = 5000; // Initial delay of 5 seconds to allow database records to be committed
+  let delay = 8000; // Initial delay of 8 seconds to allow database records to be committed
   console.log('Starting createStripeCustomer with token length:', accessToken.length);
 
   while (retryCount < maxRetries) {
@@ -73,7 +73,7 @@ const createStripeCustomer = async (accessToken: string) => {
         await new Promise(resolve => setTimeout(resolve, delay));
         if (retryCount < maxRetries - 1) {
           retryCount++;
-          delay = Math.min(delay * 1.5, 15000); // Gradual backoff, max 15 seconds
+          delay = Math.min(delay * 1.2, 20000); // Gradual backoff, max 20 seconds
           continue;
         }
         throw new Error('No valid session available after retries');
@@ -111,7 +111,7 @@ const createStripeCustomer = async (accessToken: string) => {
           console.log(`User data not ready yet, retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           retryCount++;
-          delay = Math.min(delay * 1.5, 15000);
+          delay = Math.min(delay * 1.3, 20000);
           continue;
         }
         
@@ -135,7 +135,7 @@ const createStripeCustomer = async (accessToken: string) => {
       if (error instanceof Error && retryCount < maxRetries - 1) {
         console.log(`Retrying createStripeCustomer in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
         retryCount++;
-        delay = Math.min(delay * 1.5, 15000); // Gradual backoff, max 15 seconds
+        delay = Math.min(delay * 1.3, 20000); // Gradual backoff, max 20 seconds
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -177,7 +177,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (error) {
             console.error('Error creating Stripe customer during auth change:', error);
           }
-        }, 3000); // 3 second delay
+        }, 5000); // 5 second delay
       }
       
       setLoading(false);
@@ -215,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (stripeError) {
             console.error('Error creating Stripe customer during signup:', stripeError);
           }
-        }, 5000); // 5 second delay for signup
+        }, 8000); // 8 second delay for signup
       }
       
       setError(null);
@@ -252,7 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (stripeError) {
             console.error('Error creating Stripe customer during signin:', stripeError);
           }
-        }, 3000); // 3 second delay for signin
+        }, 5000); // 5 second delay for signin
       }
     } catch (error) {
       const errorMessage = error instanceof AuthError 
@@ -334,7 +334,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (stripeError) {
             console.error('Error creating Stripe customer during Google sign in:', stripeError);
           }
-        }, 3000); // 3 second delay for Google signin
+        }, 5000); // 5 second delay for Google signin
       }
 
       setError(null);

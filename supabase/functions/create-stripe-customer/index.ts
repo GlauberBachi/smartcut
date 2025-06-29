@@ -48,25 +48,27 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-const waitForUserData = async (supabaseClient: any, userId: string, retries = 20, delay = 2000): Promise<any> => {
+const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25, delay = 3000): Promise<any> => {
   for (let i = 0; i < retries; i++) {
     console.log(`Attempt ${i + 1}: Checking for user data...`);
     
     try {
-      // Check if user exists in auth.users first
-      const { data: authUser, error: authError } = await supabaseClient.auth.admin.getUserById(userId);
+      // First check if auth user exists
+      const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
       
       if (authError || !authUser?.user) {
-        console.log(`Attempt ${i + 1}: Auth user not found yet`);
+        console.log(`Attempt ${i + 1}: Auth user not found yet - ${authError?.message || 'No user'}`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
-        return { data: null, error: new Error('Auth user not found') };
+        return { data: null, error: new Error('Auth user not found after all retries') };
       }
 
+      console.log(`Attempt ${i + 1}: Auth user found, checking public tables...`);
+
       // Check if user exists in public.users table
-      const { data: userData, error: userError } = await supabaseClient
+      const { data: userData, error: userError } = await supabaseAdmin
         .from('users')
         .select('email, role')
         .eq('id', userId)
@@ -74,6 +76,11 @@ const waitForUserData = async (supabaseClient: any, userId: string, retries = 20
 
       if (userError) {
         console.log(`Attempt ${i + 1} user table error:`, userError.message);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { data: null, error: userError };
       }
 
       if (!userData) {
@@ -86,7 +93,7 @@ const waitForUserData = async (supabaseClient: any, userId: string, retries = 20
       }
 
       // Check if profile exists
-      const { data: profile, error: profileError } = await supabaseClient
+      const { data: profile, error: profileError } = await supabaseAdmin
         .from('profiles')
         .select('id')
         .eq('id', userId)
@@ -94,6 +101,11 @@ const waitForUserData = async (supabaseClient: any, userId: string, retries = 20
 
       if (profileError) {
         console.log(`Attempt ${i + 1} profile error:`, profileError.message);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { data: null, error: profileError };
       }
 
       if (!profile) {
@@ -106,7 +118,7 @@ const waitForUserData = async (supabaseClient: any, userId: string, retries = 20
       }
 
       // Check if subscription exists
-      const { data: subscription, error: subscriptionError } = await supabaseClient
+      const { data: subscription, error: subscriptionError } = await supabaseAdmin
         .from('subscriptions')
         .select('id')
         .eq('user_id', userId)
@@ -114,6 +126,11 @@ const waitForUserData = async (supabaseClient: any, userId: string, retries = 20
 
       if (subscriptionError) {
         console.log(`Attempt ${i + 1} subscription error:`, subscriptionError.message);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { data: null, error: subscriptionError };
       }
 
       if (!subscription) {
@@ -236,19 +253,25 @@ Deno.serve(async (req) => {
     }
 
     // Wait for user data to be available with longer timeout and more retries
-    const { data: userData, error: userDataError } = await waitForUserData(supabaseClient, user.id, 20, 2000);
+    console.log('Waiting for user data to be available...');
+    const { data: userData, error: userDataError } = await waitForUserData(supabaseAdmin, user.id, 25, 3000);
 
     if (userDataError || !userData) {
       console.error('Error getting complete user data after retries:', userDataError);
       await logStripeEvent(supabaseClient, user.id, null, 'user_data_not_found', null, null, userDataError);
       return new Response(
-        JSON.stringify({ error: 'Complete user data not found after multiple attempts. Please try again.' }),
+        JSON.stringify({ 
+          error: 'Complete user data not found after multiple attempts. Please try again in a few moments.',
+          details: userDataError?.message 
+        }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 404
         }
       );
     }
+
+    console.log('User data found, creating Stripe customer...');
 
     // Create Stripe customer
     const customerData = {
