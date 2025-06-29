@@ -112,8 +112,18 @@ const Navbar = () => {
   };
 
   const handleProfileNavigation = (tab: string) => {
-    navigate('/profile', { state: { activeTab: tab } });
     setShowProfileMenu(false);
+    navigate('/profile', { state: { activeTab: tab } });
+  };
+
+  const handleNotificationsNavigation = () => {
+    setShowProfileMenu(false);
+    navigate('/notifications');
+  };
+
+  const handlePricingNavigation = () => {
+    setShowProfileMenu(false);
+    navigate('/pricing');
   };
 
   const toggleProfileMenu = (e: React.MouseEvent) => {
@@ -201,14 +211,13 @@ const Navbar = () => {
                           <Camera className="h-4 w-4 mr-2" />
                           {t('nav.profile.avatar')}
                         </button>
-                        <Link
-                          to="/notifications"
-                          onClick={() => setShowProfileMenu(false)}
+                        <button
+                          onClick={handleNotificationsNavigation}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           {t('nav.profile.notifications')}
-                        </Link>
+                        </button>
                         <button
                           onClick={() => handleProfileNavigation('password')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
@@ -217,17 +226,14 @@ const Navbar = () => {
                           {t('nav.profile.password')}
                         </button>
                         <button
-                          onClick={() => navigate('/pricing')}
+                          onClick={handlePricingNavigation}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           Assinaturas
                         </button>
                         <button 
-                          onClick={() => {
-                            setShowProfileMenu(false);
-                            navigate('/profile', { state: { activeTab: 'danger' } });
-                          }}
+                          onClick={() => handleProfileNavigation('danger')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
