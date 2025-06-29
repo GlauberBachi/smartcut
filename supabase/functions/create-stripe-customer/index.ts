@@ -48,18 +48,19 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25, delay = 3000): Promise<any> => {
+const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30, delay = 2000): Promise<any> => {
   for (let i = 0; i < retries; i++) {
     console.log(`Attempt ${i + 1}: Checking for user data...`);
     
     try {
-      // First check if auth user exists
+      // First check if auth user exists using admin client
       const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.getUserById(userId);
       
       if (authError || !authUser?.user) {
         console.log(`Attempt ${i + 1}: Auth user not found yet - ${authError?.message || 'No user'}`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000); // Gradual increase, max 5 seconds
           continue;
         }
         return { data: null, error: new Error('Auth user not found after all retries') };
@@ -78,6 +79,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25,
         console.log(`Attempt ${i + 1} user table error:`, userError.message);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000);
           continue;
         }
         return { data: null, error: userError };
@@ -87,6 +89,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25,
         console.log(`Attempt ${i + 1}: User not found in public.users table yet`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000);
           continue;
         }
         return { data: null, error: new Error('User not found in public.users table') };
@@ -103,6 +106,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25,
         console.log(`Attempt ${i + 1} profile error:`, profileError.message);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000);
           continue;
         }
         return { data: null, error: profileError };
@@ -112,6 +116,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25,
         console.log(`Attempt ${i + 1}: Profile not found yet`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000);
           continue;
         }
         return { data: null, error: new Error('Profile not found') };
@@ -128,6 +133,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25,
         console.log(`Attempt ${i + 1} subscription error:`, subscriptionError.message);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000);
           continue;
         }
         return { data: null, error: subscriptionError };
@@ -137,6 +143,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25,
         console.log(`Attempt ${i + 1}: Subscription not found yet`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000);
           continue;
         }
         return { data: null, error: new Error('Subscription not found') };
@@ -149,6 +156,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 25,
       console.log(`Attempt ${i + 1} unexpected error:`, error);
       if (i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
+        delay = Math.min(delay * 1.1, 5000);
         continue;
       }
       return { data: null, error };
@@ -192,10 +200,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create Supabase client
-    const supabaseClient = createClient(
+    // Create Supabase admin client (use admin for better reliability)
+    const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       {
         auth: {
           autoRefreshToken: false,
@@ -204,11 +212,10 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Get the user from the token
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
+    // Get the user from the token using admin client
+    const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
     if (userError || !user) {
-      await logStripeEvent(supabaseClient, 'unknown', null, 'auth_error', null, null, userError);
       console.error('Error getting user:', userError);
       return new Response(
         JSON.stringify({ error: 'Invalid token' }),
@@ -220,18 +227,6 @@ Deno.serve(async (req) => {
     }
 
     console.log('Got user:', user.id);
-
-    // Create Supabase admin client
-    const supabaseAdmin = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      }
-    );
 
     // Check if customer already exists (including temporary ones)
     const { data: existingCustomer } = await supabaseAdmin
@@ -254,11 +249,11 @@ Deno.serve(async (req) => {
 
     // Wait for user data to be available with longer timeout and more retries
     console.log('Waiting for user data to be available...');
-    const { data: userData, error: userDataError } = await waitForUserData(supabaseAdmin, user.id, 25, 3000);
+    const { data: userData, error: userDataError } = await waitForUserData(supabaseAdmin, user.id, 30, 2000);
 
     if (userDataError || !userData) {
       console.error('Error getting complete user data after retries:', userDataError);
-      await logStripeEvent(supabaseClient, user.id, null, 'user_data_not_found', null, null, userDataError);
+      await logStripeEvent(supabaseAdmin, user.id, null, 'user_data_not_found', null, null, userDataError);
       return new Response(
         JSON.stringify({ 
           error: 'Complete user data not found after multiple attempts. Please try again in a few moments.',
@@ -283,11 +278,11 @@ Deno.serve(async (req) => {
       }
     };
 
-    await logStripeEvent(supabaseClient, user.id, null, 'create_customer_request', customerData);
+    await logStripeEvent(supabaseAdmin, user.id, null, 'create_customer_request', customerData);
 
     const customer = await stripe.customers.create(customerData);
 
-    await logStripeEvent(supabaseClient, user.id, customer.id, 'create_customer_response', null, customer);
+    await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_customer_response', null, customer);
 
     console.log('Created Stripe customer:', customer.id);
 
@@ -305,7 +300,7 @@ Deno.serve(async (req) => {
     });
 
     console.log('Created free subscription:', subscription.id);
-    await logStripeEvent(supabaseClient, user.id, customer.id, 'create_subscription_response', null, subscription);
+    await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_subscription_response', null, subscription);
 
     // Update or create customer record with real Stripe ID
     const { error: customerUpsertError } = await supabaseAdmin
@@ -320,7 +315,7 @@ Deno.serve(async (req) => {
       });
 
     if (customerUpsertError) {
-      await logStripeEvent(supabaseClient, user.id, customer.id, 'db_customer_error', null, null, customerUpsertError);
+      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_customer_error', null, null, customerUpsertError);
       console.error('Error upserting customer in database:', customerUpsertError);
       
       // Try to delete the Stripe customer if database operation fails
@@ -328,7 +323,7 @@ Deno.serve(async (req) => {
         await stripe.customers.del(customer.id);
         await stripe.subscriptions.cancel(subscription.id);
       } catch (deleteError) {
-        await logStripeEvent(supabaseClient, user.id, customer.id, 'cleanup_error', null, null, deleteError);
+        await logStripeEvent(supabaseAdmin, user.id, customer.id, 'cleanup_error', null, null, deleteError);
         console.error('Error cleaning up Stripe resources:', deleteError);
       }
       throw customerUpsertError;
@@ -353,7 +348,7 @@ Deno.serve(async (req) => {
 
     if (subUpsertError) {
       console.error('Error upserting subscription record:', subUpsertError.message);
-      await logStripeEvent(supabaseClient, user.id, customer.id, 'db_subscription_error', null, null, subUpsertError);
+      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_subscription_error', null, null, subUpsertError);
     }
 
     console.log('Successfully created and stored Stripe customer and subscription');
