@@ -124,6 +124,11 @@ const Navbar = () => {
     setShowProfileMenu(false);
   };
 
+  const handleProfileMenuToggle = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowProfileMenu(!showProfileMenu);
+  };
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
@@ -164,7 +169,7 @@ const Navbar = () => {
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
                     className="flex items-center space-x-2"
                   >
-                    <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
+                    onClick={handleProfileMenuToggle}
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
@@ -189,7 +194,10 @@ const Navbar = () => {
                     <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]">
                       <div className="py-1">
                         <button
-                          onClick={() => handleProfileNavigation('personal')}
+                    <div 
+                      className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]"
+                      onClick={handleProfileMenuClick}
+                    >
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <User className="h-4 w-4 mr-2" />
@@ -300,4 +308,7 @@ const Navbar = () => {
   );
 };
 
+  const handleProfileMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
 export default Navbar;
