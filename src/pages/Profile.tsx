@@ -74,65 +74,84 @@ const Profile = () => {
       return;
     }
     
-    // Load user's current plan
-    const loadUserPlan = async () => {
+    // Initialize data loading
+    const initializeData = async () => {
       try {
-        // First get the customer_id from stripe_customers table
-        const { data: customerData, error: customerError } = await supabase
-          .from('stripe_customers')
-          .select('customer_id')
-          .eq('user_id', user.id)
-          .is('deleted_at', null)
-          .limit(1)
-          .maybeSingle();
-
-        if (customerError) {
-          console.error('Error loading customer:', customerError);
-          setCurrentPlan('free');
-          return;
+        setIsLoading(true);
+        
+        // Load all data in parallel
+        await Promise.all([
+          loadUserProfile(),
+          loadSubscription(),
+          loadPayments(),
+          loadUserPlan()
+        ]);
+        
+        // Set initial avatar URL from user metadata
+        if (user.user_metadata?.avatar_url) {
+          setAvatarUrl(user.user_metadata.avatar_url);
         }
-
-        if (!customerData?.customer_id) {
-          setCurrentPlan('free');
-          return;
-        }
-
-        // Then use the customer_id to get subscription data
-        const { data: subscriptionData, error: subscriptionError } = await supabase
-          .from('stripe_subscriptions')
-          .select('status, price_id')
-          .eq('customer_id', customerData.customer_id)
-          .is('deleted_at', null)
-          .limit(1)
-          .maybeSingle();
-
-        if (subscriptionError) {
-          console.error('Error loading subscription:', subscriptionError);
-          setCurrentPlan('free');
-          return;
-        }
-
-        if (subscriptionData?.status === 'active') {
-          setCurrentPlan(subscriptionData.price_id);
-        } else {
-          setCurrentPlan('free');
-        }
+        
       } catch (error) {
-        console.error('Error loading subscription:', error);
-        setCurrentPlan('free');
+        console.error('Error initializing profile data:', error);
+        setError('Erro ao carregar dados do perfil');
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    // Set initial avatar URL from user metadata
-    if (user.user_metadata?.avatar_url) {
-      setAvatarUrl(user.user_metadata.avatar_url);
-    }
-
-    loadUserPlan();
-    loadUserProfile();
-    loadSubscription();
-    loadPayments();
+    initializeData();
   }, [user, navigate]);
+
+  const loadUserPlan = async () => {
+    if (!user?.id) return;
+    
+    try {
+      // First get the customer_id from stripe_customers table
+      const { data: customerData, error: customerError } = await supabase
+        .from('stripe_customers')
+        .select('customer_id')
+        .eq('user_id', user.id)
+        .is('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (customerError) {
+        console.error('Error loading customer:', customerError);
+        setCurrentPlan('free');
+        return;
+      }
+
+      if (!customerData?.customer_id) {
+        setCurrentPlan('free');
+        return;
+      }
+
+      // Then use the customer_id to get subscription data
+      const { data: subscriptionData, error: subscriptionError } = await supabase
+        .from('stripe_subscriptions')
+        .select('status, price_id')
+        .eq('customer_id', customerData.customer_id)
+        .is('deleted_at', null)
+        .limit(1)
+        .maybeSingle();
+
+      if (subscriptionError) {
+        console.error('Error loading subscription:', subscriptionError);
+        setCurrentPlan('free');
+        return;
+      }
+
+      if (subscriptionData?.status === 'active') {
+        setCurrentPlan(subscriptionData.price_id);
+      } else {
+        setCurrentPlan('free');
+      }
+    } catch (error) {
+      console.error('Error loading subscription:', error);
+      setCurrentPlan('free');
+    }
+  };
 
   const loadUserProfile = async () => {
     if (!user?.id) return;
@@ -159,12 +178,9 @@ const Profile = () => {
           birth_date: data.birth_date || '',
         });
       }
-      
-      setIsLoading(false);
     } catch (error: any) {
       console.error('Error loading profile:', error);
-      setError(`Erro ao carregar perfil: ${error.message || 'Erro desconhecido'}`);
-      setIsLoading(false);
+      throw new Error(`Erro ao carregar perfil: ${error.message || 'Erro desconhecido'}`);
     }
   };
 
@@ -196,7 +212,6 @@ const Profile = () => {
       }
     } catch (error: any) {
       console.error('Detailed subscription error:', error);
-      setError(`Erro ao carregar assinatura: ${error.message || 'Erro desconhecido'}`);
       
       setSubscription({
         plan: 'free',
@@ -491,13 +506,12 @@ const Profile = () => {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow p-6">
-          <div className="animate-pulse flex space-x-4">
-            <div className="flex-1 space-y-4 py-1">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+            <div className="space-y-4">
               <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-              <div className="space-y-2">
-                <div className="h-4 bg-gray-200 rounded"></div>
-                <div className="h-4 bg-gray-200 rounded w-5/6"></div>
-              </div>
+              <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+              <div className="h-4 bg-gray-200 rounded w-5/6"></div>
             </div>
           </div>
         </div>
