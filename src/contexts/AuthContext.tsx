@@ -169,6 +169,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [ensureUserTimeoutRef, setEnsureUserTimeoutRef] = useState<NodeJS.Timeout | null>(null);
+  const [processedUsers, setProcessedUsers] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -184,21 +185,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.access_token && currentUser && 
           (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         
+        // Check if we've already processed this user
+        if (processedUsers.has(currentUser.id)) {
+          console.log('User already processed, skipping:', currentUser.id);
+          return;
+        }
+        
         // Clear any existing timeout to prevent multiple calls
         if (ensureUserTimeoutRef) {
           clearTimeout(ensureUserTimeoutRef);
         }
         
-        // Add progressive delay based on event type with debounce
-        const delay = event === 'SIGNED_IN' ? 3000 : 5000;
+        // Mark user as being processed
+        setProcessedUsers(prev => new Set(prev).add(currentUser.id));
+        
+        // Add progressive delay based on event type
+        const delay = event === 'SIGNED_IN' ? 5000 : 8000;
         
         const timeoutId = setTimeout(async () => {
           try {
             console.log('Ensuring complete user record for:', currentUser.id);
             await ensureUserComplete(session.access_token, currentUser.id);
+            console.log('User creation process completed for:', currentUser.id);
           } catch (error) {
             console.error('Error ensuring complete user record:', error);
-            // Don't show error to user for this background operation
+            // Remove from processed set on error so it can be retried
+            setProcessedUsers(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(currentUser.id);
+              return newSet;
+            });
           } finally {
             setEnsureUserTimeoutRef(null);
           }
@@ -215,8 +231,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (ensureUserTimeoutRef) {
         clearTimeout(ensureUserTimeoutRef);
       }
+      // Clear processed users on cleanup
+      setProcessedUsers(new Set());
     };
-  }, []);
+  }, [ensureUserTimeoutRef, processedUsers]);
 
   const signUp = async (email: string, password: string) => {
     try {
