@@ -89,9 +89,11 @@ const Navbar = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
@@ -145,7 +147,6 @@ const Navbar = () => {
     e.stopPropagation();
     setShowProfileMenu(!showProfileMenu);
   };
-
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
