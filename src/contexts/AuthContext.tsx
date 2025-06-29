@@ -52,44 +52,32 @@ const getReadableErrorMessage = (error: AuthError): string => {
   return error.message;
 };
 
-const createStripeCustomer = async (accessToken: string) => {
-  const maxRetries = 10;
+const createUserComplete = async (accessToken: string) => {
+  const maxRetries = 5;
   let retryCount = 0;
-  let delay = 15000; // Initial delay of 15 seconds to allow database records to be committed
-  console.log('Starting createStripeCustomer with token length:', accessToken.length);
+  let delay = 5000; // Start with 5 seconds
+  
+  console.log('Starting createUserComplete with token');
 
   while (retryCount < maxRetries) {
     try {
       // Get current session and verify it's valid
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('Current session:', {
-        hasSession: !!session,
-        hasAccessToken: !!session?.access_token,
-        tokenMatch: session?.access_token === accessToken
-      });
-
+      
       if (!session?.access_token) {
         console.log('No valid session found, attempt:', retryCount + 1);
         await new Promise(resolve => setTimeout(resolve, delay));
         if (retryCount < maxRetries - 1) {
           retryCount++;
-          delay = Math.min(delay * 1.2, 45000); // Gradual backoff, max 45 seconds
+          delay = Math.min(delay * 1.5, 30000); // Max 30 seconds
           continue;
         }
         throw new Error('No valid session available after retries');
       }
 
-      // Validate the token by attempting to get user data
-      const { data: { user }, error: userError } = await supabase.auth.getUser(session.access_token);
-      
-      if (userError || !user) {
-        console.error('Token validation failed:', userError);
-        throw new Error('Invalid token. Please sign in again.');
-      }
+      console.log('Making request to create-user-complete Edge Function');
 
-      console.log('Session found, making request to Edge Function');
-
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-stripe-customer`, {
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-user-complete`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -106,24 +94,24 @@ const createStripeCustomer = async (accessToken: string) => {
           throw new Error('Invalid or expired token. Please sign in again.');
         }
         
-        // If it's a 404 (user data not found), retry with longer delay
-        if (response.status === 404 && retryCount < maxRetries - 1) {
-          console.log(`User data not ready yet, retrying in ${delay}ms...`);
+        // If it's a 500 error, retry
+        if (response.status >= 500 && retryCount < maxRetries - 1) {
+          console.log(`Server error, retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           retryCount++;
-          delay = Math.min(delay * 1.3, 45000);
+          delay = Math.min(delay * 1.5, 30000);
           continue;
         }
         
-        throw new Error(`Failed to create Stripe customer: ${errorText}`);
+        throw new Error(`Failed to create user: ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('Stripe customer creation successful:', result);
+      console.log('User creation successful:', result);
       return result;
 
     } catch (error) {
-      console.error('Error in createStripeCustomer:', error);
+      console.error('Error in createUserComplete:', error);
       
       // If error is related to authentication, don't retry
       if (error instanceof Error && 
@@ -133,16 +121,16 @@ const createStripeCustomer = async (accessToken: string) => {
       }
       
       if (error instanceof Error && retryCount < maxRetries - 1) {
-        console.log(`Retrying createStripeCustomer in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+        console.log(`Retrying createUserComplete in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
         retryCount++;
-        delay = Math.min(delay * 1.3, 45000); // Gradual backoff, max 45 seconds
+        delay = Math.min(delay * 1.5, 30000);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
       throw error;
     }
   }
-  throw new Error('Failed to create Stripe customer after maximum retries');
+  throw new Error('Failed to create user after maximum retries');
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -153,31 +141,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
-      
-      // If we have a session, ensure Stripe customer exists
-      if (session?.access_token) {
-        createStripeCustomer(session.access_token).catch(error => {
-          console.error('Error creating Stripe customer during session check:', error);
-        });
-      }
-      
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
-      // If we have a new session, ensure Stripe customer exists with delay
-      if (session?.access_token) {
-        // Add a longer delay for new user creation to ensure database records are committed
+      // If we have a new user (signup or signin), create complete user record
+      if (session?.access_token && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        // Add delay to ensure auth user is fully created
         setTimeout(async () => {
           try {
-            await createStripeCustomer(session.access_token);
+            await createUserComplete(session.access_token);
           } catch (error) {
-            console.error('Error creating Stripe customer during auth change:', error);
+            console.error('Error creating complete user record:', error);
           }
-        }, 10000); // 10 second delay
+        }, 3000); // 3 second delay
       }
       
       setLoading(false);
@@ -203,20 +183,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         throw signUpError;
       }
-
-      // Get the session after signup
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Create Stripe customer if we have a session (with longer delay to ensure DB records exist)
-      if (session?.access_token) {
-        setTimeout(async () => {
-          try {
-            await createStripeCustomer(session.access_token);
-          } catch (stripeError) {
-            console.error('Error creating Stripe customer during signup:', stripeError);
-          }
-        }, 15000); // 15 second delay for signup
-      }
       
       setError(null);
     } catch (error) {
@@ -240,20 +206,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (error) throw error;
       setError(null);
-
-      // Get fresh session after sign in
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Create Stripe customer if we have a session (with delay to ensure DB records exist)
-      if (session?.access_token) {
-        setTimeout(async () => {
-          try {
-            await createStripeCustomer(session.access_token);
-          } catch (stripeError) {
-            console.error('Error creating Stripe customer during signin:', stripeError);
-          }
-        }, 10000); // 10 second delay for signin
-      }
     } catch (error) {
       const errorMessage = error instanceof AuthError 
         ? getReadableErrorMessage(error)
@@ -320,23 +272,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (error) throw error;
-
-      // Get fresh session after Google sign in
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // Create Stripe customer if we have a session
-      if (session?.access_token) {
-        setTimeout(async () => {
-          try {
-            console.log('Creating Stripe customer after Google sign in');
-            await createStripeCustomer(session.access_token);
-            console.log('Successfully created Stripe customer after Google sign in');
-          } catch (stripeError) {
-            console.error('Error creating Stripe customer during Google sign in:', stripeError);
-          }
-        }, 10000); // 10 second delay for Google signin
-      }
-
       setError(null);
       setLoading(false);
     } catch (error) {
