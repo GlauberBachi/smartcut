@@ -27,12 +27,9 @@ const Navbar = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string>('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  
-  // Refs para controle do dropdown
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setShowProfileMenu(false);
@@ -97,33 +94,16 @@ const Navbar = () => {
     }
   }, [user]);
 
-  // Effect para gerenciar cliques fora do dropdown
   useEffect(() => {
-    if (!showProfileMenu) return;
-
-    const handleClickOutside = (event: Event) => {
-      const target = event.target as Element;
-      
-      // Verificar se o clique foi fora do dropdown E fora do botão
-      if (
-        dropdownRef.current && 
-        !dropdownRef.current.contains(target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(target)
-      ) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
     };
 
-    // Usar capture: true para interceptar o evento antes que chegue aos elementos filhos
-    document.addEventListener('click', handleClickOutside, true);
-    document.addEventListener('touchstart', handleClickOutside, true);
-
-    return () => {
-      document.removeEventListener('click', handleClickOutside, true);
-      document.removeEventListener('touchstart', handleClickOutside, true);
-    };
-  }, [showProfileMenu]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
@@ -142,21 +122,6 @@ const Navbar = () => {
   const handleProfileNavigation = (tab: string) => {
     navigate('/profile', { state: { activeTab: tab } });
     setShowProfileMenu(false);
-  };
-
-  const toggleProfileMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowProfileMenu(prev => !prev);
-  };
-
-  const handleMenuItemClick = (action: () => void) => {
-    return (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      action();
-      setShowProfileMenu(false);
-    };
   };
 
   return (
@@ -191,15 +156,13 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="flex items-center space-x-2 relative">
+                <div className="flex items-center space-x-2 relative" ref={profileMenuRef}>
                   <span className="text-sm font-medium text-gray-700">
                     {user.email}
                   </span>
                   <button
-                    ref={buttonRef}
-                    onClick={toggleProfileMenu}
-                    className="flex items-center space-x-2 focus:outline-none"
-                    type="button"
+                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    className="flex items-center space-x-2"
                   >
                     <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                       {avatarUrl ? (
@@ -221,67 +184,60 @@ const Navbar = () => {
                     </div>
                     <ChevronDown className="h-4 w-4 text-gray-500" />
                   </button>
-                  
+                  {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div 
-                      ref={dropdownRef}
-                      className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]"
-                      style={{ position: 'absolute' }}
-                    >
+                    <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]">
                       <div className="py-1">
                         <button
-                          onClick={handleMenuItemClick(() => handleProfileNavigation('personal'))}
+                          onClick={() => handleProfileNavigation('personal')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                          type="button"
                         >
                           <User className="h-4 w-4 mr-2" />
                           {t('nav.profile.personalInfo')}
                         </button>
                         <button
-                          onClick={handleMenuItemClick(() => handleProfileNavigation('avatar'))}
+                          onClick={() => handleProfileNavigation('avatar')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                          type="button"
                         >
                           <Camera className="h-4 w-4 mr-2" />
                           {t('nav.profile.avatar')}
                         </button>
                         <Link
                           to="/notifications"
-                          onClick={handleMenuItemClick(() => {})}
+                          onClick={() => setShowProfileMenu(false)}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           {t('nav.profile.notifications')}
                         </Link>
                         <button
-                          onClick={handleMenuItemClick(() => handleProfileNavigation('password'))}
+                          onClick={() => handleProfileNavigation('password')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                          type="button"
                         >
                           <Key className="h-4 w-4 mr-2" />
                           {t('nav.profile.password')}
                         </button>
                         <button
-                          onClick={handleMenuItemClick(() => navigate('/pricing'))}
+                          onClick={() => navigate('/pricing')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                          type="button"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           Assinaturas
                         </button>
                         <button 
-                          onClick={handleMenuItemClick(() => navigate('/profile', { state: { activeTab: 'danger' } }))}
+                          onClick={() => {
+                            setShowProfileMenu(false);
+                            navigate('/profile', { state: { activeTab: 'danger' } });
+                          }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
-                          type="button"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Excluir conta
                         </button>
                         <hr className="my-1" />
                         <button
-                          onClick={handleMenuItemClick(handleSignOut)}
+                          onClick={handleSignOut}
                           className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-gray-100"
-                          type="button"
                         >
                           {t('nav.profile.logout')}
                         </button>
@@ -301,7 +257,6 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
-      
       {/* Mobile Sidebar */}
       {isMobileMenuOpen && user && (
         <div className="fixed inset-0 z-40">
