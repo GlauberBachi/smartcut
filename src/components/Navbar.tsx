@@ -20,11 +20,6 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setShowProfileMenu(false);
-    setIsMobileMenuOpen(false);
-  }, [user]);
-
-  useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user?.id) {
         setIsAdmin(false);
@@ -83,17 +78,20 @@ const Navbar = () => {
   }, [user]);
 
   useEffect(() => {
+    setShowProfileMenu(false);
+    setIsMobileMenuOpen(false);
+  }, [user]);
+
+  useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
     };
 
-    if (showProfileMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showProfileMenu]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
@@ -146,6 +144,7 @@ const Navbar = () => {
     e.preventDefault();
     e.stopPropagation();
     setShowProfileMenu(!showProfileMenu);
+    console.log('Toggle profile menu:', !showProfileMenu); // Debug log
   };
   return (
     <>
