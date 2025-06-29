@@ -84,14 +84,26 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+        console.log('Clicking outside, closing menu'); // Debug log
         setShowProfileMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    // Only add listener when menu is open
+    if (showProfileMenu) {
+      // Use a small delay to prevent immediate closing
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
@@ -143,8 +155,9 @@ const Navbar = () => {
   const toggleProfileMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setShowProfileMenu(!showProfileMenu);
-    console.log('Toggle profile menu:', !showProfileMenu); // Debug log
+    const newState = !showProfileMenu;
+    setShowProfileMenu(newState);
+    console.log('Toggle profile menu:', newState); // Debug log
   };
   return (
     <>
@@ -210,7 +223,10 @@ const Navbar = () => {
                   </div>
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                    <div 
+                      className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
+                      onClick={handleDropdownClick}
+                    >
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
@@ -319,5 +335,10 @@ const Navbar = () => {
     </>
   );
 };
+
+  // Prevent dropdown from closing when clicking inside it
+  const handleDropdownClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
 
 export default Navbar;
