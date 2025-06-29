@@ -110,7 +110,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
     closeDropdown();
     setTimeout(() => {
       navigate('/profile', { state: { activeTab: tab } });
-    }, 150); // Aumentar delay para garantir que o dropdown feche
+    }, 50); // Reduzir delay
   }, [navigate, closeDropdown]);
 
   const handleNotificationsNavigation = useCallback(() => {

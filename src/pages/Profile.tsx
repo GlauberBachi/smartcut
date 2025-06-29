@@ -485,7 +485,7 @@ const Profile = () => {
   }
 
   const renderPersonalInfo = () => (
-    <div className="max-w-2xl mx-auto">
+    <div>
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Informações Pessoais</h2>
       <form onSubmit={handleProfileUpdate} className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
@@ -799,6 +799,9 @@ const Profile = () => {
 
   // Sempre renderizar informações pessoais se não houver aba específica
   const activeTab = location.state?.activeTab || 'personal';
+  
+  console.log('Profile activeTab:', activeTab);
+  console.log('Location state:', location.state);
 
   return (
     <div className="py-8 px-4">
@@ -813,23 +816,14 @@ const Profile = () => {
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow p-6">
-        {(() => {
-          switch (activeTab) {
-            case 'personal':
-              return renderPersonalInfo();
-            case 'avatar':
-              return renderAvatarSection();
-            case 'password':
-              return renderPasswordSection();
-            case 'subscription':
-              return renderSubscriptionSection();
-            case 'danger':
-              return renderDangerSection();
-            default:
-              return renderPersonalInfo();
-          }
-        })()}
+      <div className="max-w-2xl mx-auto">
+        <div className="bg-white rounded-lg shadow p-6">
+          {activeTab === 'personal' && renderPersonalInfo()}
+          {activeTab === 'avatar' && renderAvatarSection()}
+          {activeTab === 'password' && renderPasswordSection()}
+          {activeTab === 'subscription' && renderSubscriptionSection()}
+          {activeTab === 'danger' && renderDangerSection()}
+        </div>
       </div>
 
       {/* Confirmation Modal */}
