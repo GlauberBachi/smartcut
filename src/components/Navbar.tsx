@@ -89,11 +89,9 @@ const Navbar = () => {
       }
     };
 
-    if (showProfileMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showProfileMenu]);
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
@@ -142,8 +140,6 @@ const Navbar = () => {
     }
   };
 
-
-
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
@@ -178,39 +174,38 @@ const Navbar = () => {
               {user ? (
                 <div className="relative" ref={profileMenuRef}>
                   <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium text-gray-700">
-                    {user.email}
-                  </span>
-                  <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center space-x-2"
-                  >
-                    <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
-                      {avatarUrl ? (
-                        <img
-                          src={avatarUrl}
-                          alt={`Avatar de ${user.email}`}
-                          className="h-full w-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.parentElement!.innerHTML = `<span class="text-sm font-medium text-primary-600">${getInitials(user.email || '')}</span>`;
-                          }}
-                        />
-                      ) : (
-                        <span className="text-sm font-medium text-primary-600">
-                          {getInitials(user.email || '')}
-                        </span>
-                      )}
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-gray-500" />
-                  </button>
+                    <span className="text-sm font-medium text-gray-700">
+                      {user.email}
+                    </span>
+                    <button
+                      onClick={() => setShowProfileMenu(!showProfileMenu)}
+                      className="flex items-center space-x-2 px-2 py-1 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors duration-200"
+                    >
+                      <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
+                        {avatarUrl ? (
+                          <img
+                            src={avatarUrl}
+                            alt={`Avatar de ${user.email}`}
+                            className="h-full w-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              target.parentElement!.innerHTML = `<span class="text-sm font-medium text-primary-600">${getInitials(user.email || '')}</span>`;
+                            }}
+                          />
+                        ) : (
+                          <span className="text-sm font-medium text-primary-600">
+                            {getInitials(user.email || '')}
+                          </span>
+                        )}
+                      </div>
+                      <ChevronDown className="h-4 w-4" />
+                    </button>
                   </div>
+
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div 
-                      className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
-                    >
+                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
