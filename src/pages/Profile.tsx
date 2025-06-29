@@ -62,6 +62,7 @@ const Profile = () => {
   useEffect(() => {
     const tabFromState = location.state?.activeTab;
     if (tabFromState) {
+      console.log('Setting active tab from location state:', tabFromState);
       setActiveTab(tabFromState);
       // Clear the state to prevent issues with browser back/forward
       window.history.replaceState({}, document.title);
@@ -73,6 +74,8 @@ const Profile = () => {
       navigate('/');
       return;
     }
+    
+    console.log('Initializing profile data for user:', user.id);
     
     // Initialize data loading
     const initializeData = async () => {
@@ -92,6 +95,8 @@ const Profile = () => {
           setAvatarUrl(user.user_metadata.avatar_url);
         }
         
+        console.log('Profile data initialization completed');
+        
       } catch (error) {
         console.error('Error initializing profile data:', error);
         setError('Erro ao carregar dados do perfil');
@@ -107,6 +112,8 @@ const Profile = () => {
     if (!user?.id) return;
     
     try {
+      console.log('Loading user plan for:', user.id);
+      
       // First get the customer_id from stripe_customers table
       const { data: customerData, error: customerError } = await supabase
         .from('stripe_customers')
@@ -123,6 +130,7 @@ const Profile = () => {
       }
 
       if (!customerData?.customer_id) {
+        console.log('No customer found, setting to free plan');
         setCurrentPlan('free');
         return;
       }
@@ -143,8 +151,10 @@ const Profile = () => {
       }
 
       if (subscriptionData?.status === 'active') {
+        console.log('Active subscription found:', subscriptionData.price_id);
         setCurrentPlan(subscriptionData.price_id);
       } else {
+        console.log('No active subscription, setting to free');
         setCurrentPlan('free');
       }
     } catch (error) {
@@ -157,6 +167,8 @@ const Profile = () => {
     if (!user?.id) return;
 
     try {
+      console.log('Loading user profile for:', user.id);
+      
       const { data, error } = await supabase
         .from('profiles')
         .select('full_name, phone, birth_date')
@@ -177,6 +189,8 @@ const Profile = () => {
           phone: data.phone || '',
           birth_date: data.birth_date || '',
         });
+        
+        console.log('Profile loaded successfully');
       }
     } catch (error: any) {
       console.error('Error loading profile:', error);
@@ -188,6 +202,8 @@ const Profile = () => {
     if (!user?.id) return;
 
     try {
+      console.log('Loading subscription for:', user.id);
+      
       const { data, error } = await supabase
         .from('subscriptions')
         .select('*')
@@ -202,7 +218,9 @@ const Profile = () => {
       
       if (data) {
         setSubscription(data);
+        console.log('Subscription loaded:', data.plan);
       } else {
+        console.log('No subscription found, creating default');
         setSubscription({
           plan: 'free',
           status: 'active',
@@ -223,6 +241,7 @@ const Profile = () => {
   };
 
   const loadPayments = async () => {
+    console.log('Loading payments (mock data)');
     setPayments([
       {
         id: '1',
@@ -237,6 +256,7 @@ const Profile = () => {
     e.preventDefault();
     if (!user?.id) return;
 
+    console.log('Updating profile for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -254,6 +274,7 @@ const Profile = () => {
 
       if (error) throw error;
       setSuccess('Perfil atualizado com sucesso!');
+      console.log('Profile updated successfully');
     } catch (error: any) {
       console.error('Error updating profile:', error);
       setError(`Erro ao atualizar perfil: ${error.message || 'Erro desconhecido'}`);
@@ -264,6 +285,7 @@ const Profile = () => {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Changing password for user:', user?.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -277,6 +299,7 @@ const Profile = () => {
       setSuccess('Senha alterada com sucesso!');
       setNewPassword('');
       setCurrentPassword('');
+      console.log('Password changed successfully');
     } catch (error: any) {
       console.error('Error changing password:', error);
       setError(`Erro ao alterar senha: ${error.message || 'Erro desconhecido'}`);
@@ -288,6 +311,7 @@ const Profile = () => {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0]) return;
 
+    console.log('Avatar change initiated');
     const file = e.target.files[0];
     const reader = new FileReader();
 
@@ -302,6 +326,7 @@ const Profile = () => {
   const handleCroppedImage = async (croppedBlob: Blob) => {
     if (!user?.id) return;
 
+    console.log('Processing cropped image for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -330,6 +355,7 @@ const Profile = () => {
 
       setAvatarUrl(publicUrl);
       setSuccess('Foto de perfil atualizada com sucesso!');
+      console.log('Avatar updated successfully');
     } catch (error: any) {
       console.error('Error updating avatar:', error);
       setError(`Erro ao atualizar foto de perfil: ${error.message || 'Erro desconhecido'}`);
@@ -343,6 +369,7 @@ const Profile = () => {
   const handleDeleteAvatar = async () => {
     if (!user?.id) return;
 
+    console.log('Deleting avatar for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -363,6 +390,7 @@ const Profile = () => {
       setAvatarUrl(null);
       setSuccess('Foto de perfil removida com sucesso!');
       setShowDeleteConfirm(false);
+      console.log('Avatar deleted successfully');
     } catch (error: any) {
       console.error('Error deleting avatar:', error);
       setError(`Erro ao remover foto de perfil: ${error.message || 'Erro desconhecido'}`);
@@ -374,6 +402,7 @@ const Profile = () => {
   const handleCancelSubscription = async () => {
     if (!user?.id || !subscription) return;
 
+    console.log('Canceling subscription for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -395,6 +424,7 @@ const Profile = () => {
       
       setSuccess('Assinatura cancelada com sucesso! Você ainda terá acesso até o final do período atual.');
       setShowCancelConfirm(false);
+      console.log('Subscription canceled successfully');
     } catch (error: any) {
       console.error('Error canceling subscription:', error);
       setError(`Erro ao cancelar assinatura: ${error.message || 'Erro desconhecido'}`);
@@ -406,6 +436,7 @@ const Profile = () => {
   const handleResumeSubscription = async () => {
     if (!user?.id || !subscription) return;
 
+    console.log('Resuming subscription for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -426,6 +457,7 @@ const Profile = () => {
       await loadSubscription();
       
       setSuccess('Sua assinatura foi reativada com sucesso!');
+      console.log('Subscription resumed successfully');
     } catch (error: any) {
       console.error('Error resuming subscription:', error);
       setError(`Erro ao reativar assinatura: ${error.message || 'Erro desconhecido'}`);
@@ -437,6 +469,7 @@ const Profile = () => {
   const handleDeleteAccount = async () => {
     if (!user?.id) return;
 
+    console.log('Deleting account for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -463,6 +496,7 @@ const Profile = () => {
 
       setShowSuccessModal(true);
       setShowDeleteConfirm(false);
+      console.log('Account deleted successfully');
       
       // Only sign out after successful deletion
       await signOut();
@@ -497,12 +531,14 @@ const Profile = () => {
 
   // Clear success/error messages when switching tabs
   const handleTabChange = (tab: string) => {
+    console.log('Changing tab to:', tab);
     setActiveTab(tab);
     setError('');
     setSuccess('');
   };
 
   if (isLoading) {
+    console.log('Profile page is loading...');
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow p-6">
@@ -518,6 +554,8 @@ const Profile = () => {
       </div>
     );
   }
+
+  console.log('Rendering profile page with active tab:', activeTab);
 
   return (
     <div className="py-8 px-4">
