@@ -799,9 +799,6 @@ const Profile = () => {
 
   // Sempre renderizar informações pessoais se não houver aba específica
   const activeTab = location.state?.activeTab || 'personal';
-  
-  console.log('Profile activeTab:', activeTab);
-  console.log('Location state:', location.state);
 
   return (
     <div className="py-8 px-4">
@@ -816,15 +813,46 @@ const Profile = () => {
         </div>
       )}
 
-      <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-lg shadow p-6">
-          {activeTab === 'personal' && renderPersonalInfo()}
-          {activeTab === 'avatar' && renderAvatarSection()}
-          {activeTab === 'password' && renderPasswordSection()}
-          {activeTab === 'subscription' && renderSubscriptionSection()}
-          {activeTab === 'danger' && renderDangerSection()}
+      {/* Renderizar sempre as informações pessoais por padrão */}
+      {(!activeTab || activeTab === 'personal') && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-6">
+            {renderPersonalInfo()}
+          </div>
         </div>
-      </div>
+      )}
+      
+      {activeTab === 'avatar' && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-6">
+            {renderAvatarSection()}
+          </div>
+        </div>
+      )}
+      
+      {activeTab === 'password' && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-6">
+            {renderPasswordSection()}
+          </div>
+        </div>
+      )}
+      
+      {activeTab === 'subscription' && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-6">
+            {renderSubscriptionSection()}
+          </div>
+        </div>
+      )}
+      
+      {activeTab === 'danger' && (
+        <div className="max-w-2xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-6">
+            {renderDangerSection()}
+          </div>
+        </div>
+      )}
 
       {/* Confirmation Modal */}
       {showCancelConfirm && (

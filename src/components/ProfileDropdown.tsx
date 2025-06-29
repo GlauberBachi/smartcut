@@ -108,9 +108,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
   // Funções de navegação
   const handleProfileNavigation = useCallback((tab: string) => {
     closeDropdown();
-    setTimeout(() => {
-      navigate('/profile', { state: { activeTab: tab } });
-    }, 50); // Reduzir delay
+    navigate('/profile', { state: { activeTab: tab } });
   }, [navigate, closeDropdown]);
 
   const handleNotificationsNavigation = useCallback(() => {
