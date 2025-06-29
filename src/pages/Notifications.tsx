@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useTranslation } from 'react-i18next';
+import { Bell, CheckCircle } from 'lucide-react';
 
 interface Notification {
   id: string;
@@ -16,7 +16,6 @@ interface Notification {
 
 const Notifications = () => {
   const { user } = useAuth();
-  const { t } = useTranslation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +27,7 @@ const Notifications = () => {
 
   const loadNotifications = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -85,16 +85,51 @@ const Notifications = () => {
     }
   };
 
+  const markAllAsRead = async () => {
+    try {
+      const unreadNotifications = notifications.filter(n => !n.read);
+      
+      for (const notification of unreadNotifications) {
+        await supabase
+          .from('user_notifications')
+          .upsert({
+            user_id: user?.id,
+            notification_id: notification.id,
+            read: true,
+            read_at: new Date().toISOString()
+          });
+      }
+
+      setNotifications(notifications.map(n => ({ ...n, read: true })));
+    } catch (error: any) {
+      console.error('Error marking all notifications as read:', error);
+      setError(error.message);
+    }
+  };
+
   const getNotificationStyles = (type: string) => {
     switch (type) {
       case 'error':
-        return 'bg-red-50 border-red-100';
+        return 'bg-red-50 border-red-100 text-red-800';
       case 'warning':
-        return 'bg-yellow-50 border-yellow-100';
+        return 'bg-yellow-50 border-yellow-100 text-yellow-800';
       case 'success':
-        return 'bg-green-50 border-green-100';
+        return 'bg-green-50 border-green-100 text-green-800';
       default:
-        return 'bg-blue-50 border-blue-100';
+        return 'bg-blue-50 border-blue-100 text-blue-800';
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'error':
+        return '❌';
+      case 'warning':
+        return '⚠️';
+      case 'success':
+        return '✅';
+      default:
+        return 'ℹ️';
     }
   };
 
@@ -119,7 +154,21 @@ const Notifications = () => {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <div className="bg-white rounded-lg shadow">
         <div className="p-6">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Notificações</h2>
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center">
+              <Bell className="h-8 w-8 text-primary-600 mr-3" />
+              <h2 className="text-3xl font-bold text-gray-900">Notificações</h2>
+            </div>
+            {notifications.some(n => !n.read) && (
+              <button
+                onClick={markAllAsRead}
+                className="flex items-center px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 rounded-lg hover:bg-primary-100 transition-colors duration-200"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Marcar todas como lidas
+              </button>
+            )}
+          </div>
 
           {error && (
             <div className="mb-4 p-4 text-red-700 bg-red-100 rounded-md">{error}</div>
@@ -127,27 +176,41 @@ const Notifications = () => {
 
           <div className="space-y-4">
             {notifications.length === 0 ? (
-              <p className="text-center text-gray-500 py-4">
-                {t('notifications.empty')}
-              </p>
+              <div className="text-center py-12">
+                <Bell className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-xl font-medium text-gray-500 mb-2">
+                  Nenhuma notificação
+                </p>
+                <p className="text-gray-400">
+                  Você não tem notificações no momento.
+                </p>
+              </div>
             ) : (
               notifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 rounded-lg border ${getNotificationStyles(notification.type)} ${
-                    !notification.read ? 'border-l-4' : ''
+                  className={`p-4 rounded-lg border transition-all duration-200 cursor-pointer ${getNotificationStyles(notification.type)} ${
+                    !notification.read ? 'border-l-4 border-l-primary-500' : ''
                   }`}
                   onClick={() => !notification.read && markAsRead(notification.id)}
                 >
-                  <div className="flex justify-between items-start">
-                    <h4 className="text-sm font-medium text-gray-900">
-                      {notification.title}
-                    </h4>
-                    <span className="text-xs text-gray-500">
-                      {format(new Date(notification.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                    </span>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-3">
+                      <span className="text-lg">{getNotificationIcon(notification.type)}</span>
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">
+                          {notification.title}
+                          {!notification.read && (
+                            <span className="ml-2 inline-block w-2 h-2 bg-primary-500 rounded-full"></span>
+                          )}
+                        </h4>
+                        <p className="text-sm text-gray-600 mb-2">{notification.message}</p>
+                        <p className="text-xs text-gray-500">
+                          {format(new Date(notification.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <p className="mt-1 text-sm text-gray-600">{notification.message}</p>
                 </div>
               ))
             )}

@@ -21,20 +21,15 @@ interface Subscription {
   cancel_at_period_end: boolean;
 }
 
-interface Payment {
-  id: string;
-  amount: number;
-  status: string;
-  created_at: string;
-}
-
 const Profile = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
-  // State for active tab - use useState to make it reactive
-  const [activeTab, setActiveTab] = useState('personal');
+  // Tab state - simplified
+  const [activeTab, setActiveTab] = useState(() => {
+    return location.state?.activeTab || 'personal';
+  });
   
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
@@ -44,7 +39,6 @@ const Profile = () => {
     birth_date: '',
   });
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [payments, setPayments] = useState<Payment[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
   const [error, setError] = useState('');
@@ -56,15 +50,10 @@ const Profile = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [currentPlan, setCurrentPlan] = useState<string | null>(null);
 
-  // Update active tab when location state changes
+  // Clear location state after reading it
   useEffect(() => {
-    const tabFromState = location.state?.activeTab;
-    if (tabFromState) {
-      console.log('Setting active tab from location state:', tabFromState);
-      setActiveTab(tabFromState);
-      // Clear the state to prevent issues with browser back/forward
+    if (location.state?.activeTab) {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -75,152 +64,48 @@ const Profile = () => {
       return;
     }
     
-    console.log('Initializing profile data for user:', user.id);
-    
-    // Initialize data loading
-    const initializeData = async () => {
-      try {
-        setIsLoading(true);
-        
-        // Load all data in parallel
-        await Promise.all([
-          loadUserProfile(),
-          loadSubscription(),
-          loadPayments(),
-          loadUserPlan()
-        ]);
-        
-        // Set initial avatar URL from user metadata
-        if (user.user_metadata?.avatar_url) {
-          setAvatarUrl(user.user_metadata.avatar_url);
-        }
-        
-        console.log('Profile data initialization completed');
-        
-      } catch (error) {
-        console.error('Error initializing profile data:', error);
-        setError('Erro ao carregar dados do perfil');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    initializeData();
+    loadAllData();
   }, [user, navigate]);
 
-  const loadUserPlan = async () => {
-    if (!user?.id) return;
-    
+  const loadAllData = async () => {
     try {
-      console.log('Loading user plan for:', user.id);
+      setIsLoading(true);
       
-      // First get the customer_id from stripe_customers table
-      const { data: customerData, error: customerError } = await supabase
-        .from('stripe_customers')
-        .select('customer_id')
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
-
-      if (customerError) {
-        console.error('Error loading customer:', customerError);
-        setCurrentPlan('free');
-        return;
-      }
-
-      if (!customerData?.customer_id) {
-        console.log('No customer found, setting to free plan');
-        setCurrentPlan('free');
-        return;
-      }
-
-      // Then use the customer_id to get subscription data
-      const { data: subscriptionData, error: subscriptionError } = await supabase
-        .from('stripe_subscriptions')
-        .select('status, price_id')
-        .eq('customer_id', customerData.customer_id)
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle();
-
-      if (subscriptionError) {
-        console.error('Error loading subscription:', subscriptionError);
-        setCurrentPlan('free');
-        return;
-      }
-
-      if (subscriptionData?.status === 'active') {
-        console.log('Active subscription found:', subscriptionData.price_id);
-        setCurrentPlan(subscriptionData.price_id);
-      } else {
-        console.log('No active subscription, setting to free');
-        setCurrentPlan('free');
-      }
-    } catch (error) {
-      console.error('Error loading subscription:', error);
-      setCurrentPlan('free');
-    }
-  };
-
-  const loadUserProfile = async () => {
-    if (!user?.id) return;
-
-    try {
-      console.log('Loading user profile for:', user.id);
-      
-      const { data, error } = await supabase
+      // Load profile data
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('full_name, phone, birth_date')
         .eq('id', user.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (profileError) throw profileError;
       
-      if (data) {
-        // Split full_name into first_name and last_name
-        const nameParts = (data.full_name || '').split(' ');
+      if (profileData) {
+        const nameParts = (profileData.full_name || '').split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
 
         setProfile({
           first_name: firstName,
           last_name: lastName,
-          phone: data.phone || '',
-          birth_date: data.birth_date || '',
+          phone: profileData.phone || '',
+          birth_date: profileData.birth_date || '',
         });
-        
-        console.log('Profile loaded successfully');
       }
-    } catch (error: any) {
-      console.error('Error loading profile:', error);
-      throw new Error(`Erro ao carregar perfil: ${error.message || 'Erro desconhecido'}`);
-    }
-  };
 
-  const loadSubscription = async () => {
-    if (!user?.id) return;
-
-    try {
-      console.log('Loading subscription for:', user.id);
-      
-      const { data, error } = await supabase
+      // Load subscription data
+      const { data: subData, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
         .eq('user_id', user.id)
         .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error('Supabase query error:', error);
-        throw error;
-      }
+      if (subError) throw subError;
       
-      if (data) {
-        setSubscription(data);
-        console.log('Subscription loaded:', data.plan);
+      if (subData) {
+        setSubscription(subData);
       } else {
-        console.log('No subscription found, creating default');
         setSubscription({
           plan: 'free',
           status: 'active',
@@ -228,35 +113,30 @@ const Profile = () => {
           cancel_at_period_end: false
         });
       }
-    } catch (error: any) {
-      console.error('Detailed subscription error:', error);
+
+      // Set avatar URL
+      if (user.user_metadata?.avatar_url) {
+        setAvatarUrl(user.user_metadata.avatar_url);
+      }
       
-      setSubscription({
-        plan: 'free',
-        status: 'active',
-        current_period_end: new Date(Date.now() + 100 * 365 * 24 * 60 * 60 * 1000).toISOString(),
-        cancel_at_period_end: false
-      });
+    } catch (error: any) {
+      console.error('Error loading data:', error);
+      setError('Erro ao carregar dados do perfil');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const loadPayments = async () => {
-    console.log('Loading payments (mock data)');
-    setPayments([
-      {
-        id: '1',
-        amount: 9.90,
-        status: 'succeeded',
-        created_at: new Date().toISOString(),
-      },
-    ]);
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setError('');
+    setSuccess('');
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user?.id) return;
 
-    console.log('Updating profile for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -274,9 +154,7 @@ const Profile = () => {
 
       if (error) throw error;
       setSuccess('Perfil atualizado com sucesso!');
-      console.log('Profile updated successfully');
     } catch (error: any) {
-      console.error('Error updating profile:', error);
       setError(`Erro ao atualizar perfil: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
@@ -285,7 +163,6 @@ const Profile = () => {
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Changing password for user:', user?.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -299,9 +176,7 @@ const Profile = () => {
       setSuccess('Senha alterada com sucesso!');
       setNewPassword('');
       setCurrentPassword('');
-      console.log('Password changed successfully');
     } catch (error: any) {
-      console.error('Error changing password:', error);
       setError(`Erro ao alterar senha: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
@@ -311,7 +186,6 @@ const Profile = () => {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || !e.target.files[0]) return;
 
-    console.log('Avatar change initiated');
     const file = e.target.files[0];
     const reader = new FileReader();
 
@@ -326,7 +200,6 @@ const Profile = () => {
   const handleCroppedImage = async (croppedBlob: Blob) => {
     if (!user?.id) return;
 
-    console.log('Processing cropped image for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -355,9 +228,7 @@ const Profile = () => {
 
       setAvatarUrl(publicUrl);
       setSuccess('Foto de perfil atualizada com sucesso!');
-      console.log('Avatar updated successfully');
     } catch (error: any) {
-      console.error('Error updating avatar:', error);
       setError(`Erro ao atualizar foto de perfil: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
@@ -369,7 +240,6 @@ const Profile = () => {
   const handleDeleteAvatar = async () => {
     if (!user?.id) return;
 
-    console.log('Deleting avatar for user:', user.id);
     setLoading(true);
     setError('');
     setSuccess('');
@@ -381,86 +251,11 @@ const Profile = () => {
 
       if (updateError) throw updateError;
 
-      const { error: deleteError } = await supabase.storage
-        .from('avatars')
-        .remove([`${user.id}`]);
-
-      if (deleteError) throw deleteError;
-
       setAvatarUrl(null);
       setSuccess('Foto de perfil removida com sucesso!');
       setShowDeleteConfirm(false);
-      console.log('Avatar deleted successfully');
     } catch (error: any) {
-      console.error('Error deleting avatar:', error);
       setError(`Erro ao remover foto de perfil: ${error.message || 'Erro desconhecido'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCancelSubscription = async () => {
-    if (!user?.id || !subscription) return;
-
-    console.log('Canceling subscription for user:', user.id);
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const { error: updateError } = await supabase
-        .from('subscriptions')
-        .update({
-          cancel_at_period_end: true,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (updateError) throw updateError;
-
-      await loadSubscription();
-      
-      setSuccess('Assinatura cancelada com sucesso! Você ainda terá acesso até o final do período atual.');
-      setShowCancelConfirm(false);
-      console.log('Subscription canceled successfully');
-    } catch (error: any) {
-      console.error('Error canceling subscription:', error);
-      setError(`Erro ao cancelar assinatura: ${error.message || 'Erro desconhecido'}`);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResumeSubscription = async () => {
-    if (!user?.id || !subscription) return;
-
-    console.log('Resuming subscription for user:', user.id);
-    setLoading(true);
-    setError('');
-    setSuccess('');
-
-    try {
-      const { error } = await supabase
-        .from('subscriptions')
-        .update({
-          cancel_at_period_end: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('user_id', user.id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      await loadSubscription();
-      
-      setSuccess('Sua assinatura foi reativada com sucesso!');
-      console.log('Subscription resumed successfully');
-    } catch (error: any) {
-      console.error('Error resuming subscription:', error);
-      setError(`Erro ao reativar assinatura: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setLoading(false);
     }
@@ -469,10 +264,8 @@ const Profile = () => {
   const handleDeleteAccount = async () => {
     if (!user?.id) return;
 
-    console.log('Deleting account for user:', user.id);
     setLoading(true);
     setError('');
-    setSuccess('');
 
     try {
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -496,12 +289,9 @@ const Profile = () => {
 
       setShowSuccessModal(true);
       setShowDeleteConfirm(false);
-      console.log('Account deleted successfully');
       
-      // Only sign out after successful deletion
       await signOut();
     } catch (error: any) {
-      console.error('Error deleting account:', error);
       setError(`Erro ao excluir conta: ${error.message || 'Erro desconhecido'}`);
       setLoading(false);
     }
@@ -520,25 +310,7 @@ const Profile = () => {
     return format(date, "dd 'de' MMMM 'de' yyyy", { locale: ptBR });
   };
 
-  const formatDateTime = (dateString: string | null | undefined, defaultValue: string = 'N/A') => {
-    if (!dateString) return defaultValue;
-    
-    const date = parseISO(dateString);
-    if (!isValid(date)) return defaultValue;
-    
-    return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
-  };
-
-  // Clear success/error messages when switching tabs
-  const handleTabChange = (tab: string) => {
-    console.log('Changing tab to:', tab);
-    setActiveTab(tab);
-    setError('');
-    setSuccess('');
-  };
-
   if (isLoading) {
-    console.log('Profile page is loading...');
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow p-6">
@@ -554,8 +326,6 @@ const Profile = () => {
       </div>
     );
   }
-
-  console.log('Rendering profile page with active tab:', activeTab);
 
   return (
     <div className="py-8 px-4">
@@ -575,61 +345,28 @@ const Profile = () => {
           {/* Tab Navigation */}
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
-              <button
-                onClick={() => handleTabChange('personal')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
-                  activeTab === 'personal'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <User className="h-5 w-5 mr-2" />
-                Informações Pessoais
-              </button>
-              <button
-                onClick={() => handleTabChange('avatar')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
-                  activeTab === 'avatar'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Camera className="h-5 w-5 mr-2" />
-                Foto de Perfil
-              </button>
-              <button
-                onClick={() => handleTabChange('password')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
-                  activeTab === 'password'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Key className="h-5 w-5 mr-2" />
-                Alterar Senha
-              </button>
-              <button
-                onClick={() => handleTabChange('subscription')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
-                  activeTab === 'subscription'
-                    ? 'border-primary-500 text-primary-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <CreditCard className="h-5 w-5 mr-2" />
-                Assinatura
-              </button>
-              <button
-                onClick={() => handleTabChange('danger')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
-                  activeTab === 'danger'
-                    ? 'border-red-500 text-red-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Trash2 className="h-5 w-5 mr-2" />
-                Excluir Conta
-              </button>
+              {[
+                { id: 'personal', label: 'Informações Pessoais', icon: User },
+                { id: 'avatar', label: 'Foto de Perfil', icon: Camera },
+                { id: 'password', label: 'Alterar Senha', icon: Key },
+                { id: 'subscription', label: 'Assinatura', icon: CreditCard },
+                { id: 'danger', label: 'Excluir Conta', icon: Trash2 },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabChange(tab.id)}
+                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
+                    activeTab === tab.id
+                      ? tab.id === 'danger' 
+                        ? 'border-red-500 text-red-600'
+                        : 'border-primary-500 text-primary-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  <tab.icon className="h-5 w-5 mr-2" />
+                  {tab.label}
+                </button>
+              ))}
             </nav>
           </div>
 
@@ -821,78 +558,23 @@ const Profile = () => {
                         </span>
                       </p>
                       {subscription?.plan !== 'free' && (
-                        <>
-                          <p className="text-sm text-gray-500">
-                            Próximo vencimento:{' '}
-                            <span className="font-medium text-gray-900">
-                              {formatDate(subscription?.current_period_end)}
-                            </span>
-                          </p>
-                          {subscription?.cancel_at_period_end && (
-                            <p className="mt-2 text-sm text-amber-600 bg-amber-50 p-2 rounded">
-                              Seu plano será cancelado ao final do período atual. Você ainda tem acesso a todos os recursos até {formatDate(subscription?.current_period_end)}.
-                            </p>
-                          )}
-                        </>
+                        <p className="text-sm text-gray-500">
+                          Próximo vencimento:{' '}
+                          <span className="font-medium text-gray-900">
+                            {formatDate(subscription?.current_period_end)}
+                          </span>
+                        </p>
                       )}
                     </div>
-                    <div className="mt-6 space-y-2">
+                    <div className="mt-6">
                       <button
                         onClick={() => navigate('/pricing')}
                         className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
                       >
-                        {subscription?.plan === 'free' ? 'Assinar um plano' : 'Trocar de plano'}
+                        {subscription?.plan === 'free' ? 'Assinar um plano' : 'Gerenciar assinatura'}
                       </button>
-                      
-                      {subscription?.plan !== 'free' && !subscription?.cancel_at_period_end && (
-                        <button
-                          onClick={() => setShowCancelConfirm(true)}
-                          className="w-full py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
-                        >
-                          Cancelar plano
-                        </button>
-                      )}
-
-                      {subscription?.cancel_at_period_end && (
-                        <button
-                          onClick={handleResumeSubscription}
-                          className="w-full py-3 px-4 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors duration-200"
-                        >
-                          Reativar assinatura
-                        </button>
-                      )}
                     </div>
                   </div>
-
-                  {subscription?.plan !== 'free' && (
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-4">Histórico de pagamentos</h3>
-                      <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                        <ul className="divide-y divide-gray-200">
-                          {payments.map((payment) => (
-                            <li key={payment.id} className="px-4 py-4 sm:px-6">
-                              <div className="flex items-center justify-between">
-                                <div className="text-sm font-medium text-primary-600">
-                                  R$ {payment.amount.toFixed(2)}
-                                </div>
-                                <div className="text-sm text-gray-500">
-                                  {formatDateTime(payment.created_at)}
-                                </div>
-                              </div>
-                              <div className="mt-2 sm:flex sm:justify-between">
-                                <div className="text-sm text-gray-500">ID: {payment.id}</div>
-                                <div className="mt-2 sm:mt-0">
-                                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                                    {payment.status === 'succeeded' ? 'Aprovado' : 'Pendente'}
-                                  </span>
-                                </div>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -919,34 +601,7 @@ const Profile = () => {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {showCancelConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Confirmar cancelamento</h3>
-            <p className="text-sm text-gray-500  mb-4">
-              Tem certeza que deseja cancelar seu plano? Você ainda terá acesso a todos os recursos até o final do período atual.
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowCancelConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
-              >
-                Voltar
-              </button>
-              <button
-                onClick={handleCancelSubscription}
-                disabled={loading}
-                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700"
-              >
-                {loading ? 'Cancelando...' : 'Confirmar cancelamento'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Avatar Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
@@ -956,12 +611,12 @@ const Profile = () => {
             <p className="text-sm text-gray-500 mb-4">
               {activeTab === 'danger'
                 ? 'Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita e todos os seus dados serão permanentemente excluídos.'
-                : 'Tem certeza que deseja excluir sua foto de perfil? Esta ação não pode ser desfeita.'}
+                : 'Tem certeza que deseja excluir sua foto de perfil?'}
             </p>
             <div className="flex justify-end space-x-3">
               <button
                 onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
                 disabled={loading}
               >
                 Cancelar
