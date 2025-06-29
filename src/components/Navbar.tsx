@@ -101,8 +101,10 @@ const Navbar = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
   }, []);
 
   const getInitials = (email: string) => {
@@ -124,19 +126,6 @@ const Navbar = () => {
     setShowProfileMenu(false);
   };
 
-  const handleProfileMenuToggle = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowProfileMenu(!showProfileMenu);
-  };
-
-  const handleProfileMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
-
-  const handleMenuItemClick = () => {
-    setShowProfileMenu(false);
-  };
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
@@ -174,7 +163,11 @@ const Navbar = () => {
                     {user.email}
                   </span>
                   <button
-                    onClick={handleProfileMenuToggle}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowProfileMenu(!showProfileMenu);
+                    }}
                     className="flex items-center space-x-2"
                   >
                     <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
@@ -198,25 +191,19 @@ const Navbar = () => {
                     <ChevronDown className="h-4 w-4 text-gray-500" />
                   </button>
                   {showProfileMenu && (
-                    <div 
-                      className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]"
+                    <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       <div className="py-1">
                         <button
-                          onClick={() => {
-                            handleProfileNavigation('personal');
-                            setShowProfileMenu(false);
-                          }}
+                          onClick={() => handleProfileNavigation('personal')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <User className="h-4 w-4 mr-2" />
                           {t('nav.profile.personalInfo')}
                         </button>
                         <button
-                          onClick={() => {
-                            handleProfileNavigation('avatar');
-                            setShowProfileMenu(false);
-                          }}
+                          onClick={() => handleProfileNavigation('avatar')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Camera className="h-4 w-4 mr-2" />
@@ -231,20 +218,14 @@ const Navbar = () => {
                           {t('nav.profile.notifications')}
                         </Link>
                         <button
-                          onClick={() => {
-                            handleProfileNavigation('password');
-                            setShowProfileMenu(false);
-                          }}
+                          onClick={() => handleProfileNavigation('password')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Key className="h-4 w-4 mr-2" />
                           {t('nav.profile.password')}
                         </button>
                         <button
-                          onClick={() => {
-                            navigate('/pricing');
-                            setShowProfileMenu(false);
-                          }}
+                          onClick={() => navigate('/pricing')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
@@ -252,7 +233,6 @@ const Navbar = () => {
                         </button>
                         <button 
                           onClick={() => {
-                            setShowProfileMenu(false);
                             navigate('/profile', { state: { activeTab: 'danger' } });
                           }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
