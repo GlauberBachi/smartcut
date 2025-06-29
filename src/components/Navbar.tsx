@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { User, Camera, Key, CreditCard, ChevronDown, Bell, Menu, X, LayoutDashboard, Scissors, Trash2, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -19,7 +19,8 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   
-  const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -84,25 +85,32 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   }, [user]);
 
-  // Click outside handler mais robusto
+  // Fechar dropdown quando clicar fora - usando manipulação direta do DOM
   useEffect(() => {
-    const handleClickOutside = (event: Event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false);
+    if (!showProfileMenu) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      
+      // Verificar se o clique foi no botão ou no menu
+      if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) {
+        return;
       }
+      
+      // Fechar o menu
+      setShowProfileMenu(false);
     };
 
-    if (showProfileMenu) {
-      // Usar múltiplos tipos de eventos para garantir captura
-      document.addEventListener('click', handleClickOutside, true);
-      document.addEventListener('touchstart', handleClickOutside, true);
-      document.addEventListener('focusin', handleClickOutside, true);
-    }
+    // Usar setTimeout para garantir que o evento seja adicionado após o clique atual
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }, 0);
 
     return () => {
-      document.removeEventListener('click', handleClickOutside, true);
-      document.removeEventListener('touchstart', handleClickOutside, true);
-      document.removeEventListener('focusin', handleClickOutside, true);
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
   }, [showProfileMenu]);
 
@@ -120,28 +128,28 @@ const Navbar = () => {
     }
   };
 
-  const handleProfileNavigation = (tab: string) => {
+  const handleProfileNavigation = useCallback((tab: string) => {
     setShowProfileMenu(false);
     setTimeout(() => {
       navigate('/profile', { state: { activeTab: tab } });
-    }, 0);
-  };
+    }, 100);
+  }, [navigate]);
 
-  const handleNotificationsNavigation = () => {
+  const handleNotificationsNavigation = useCallback(() => {
     setShowProfileMenu(false);
     setTimeout(() => {
       navigate('/notifications');
-    }, 0);
-  };
+    }, 100);
+  }, [navigate]);
 
-  const handlePricingNavigation = () => {
+  const handlePricingNavigation = useCallback(() => {
     setShowProfileMenu(false);
     setTimeout(() => {
       navigate('/pricing');
-    }, 0);
-  };
+    }, 100);
+  }, [navigate]);
 
-  const handleSignOutClick = async () => {
+  const handleSignOutClick = useCallback(async () => {
     setShowProfileMenu(false);
     try {
       await signOut();
@@ -150,19 +158,14 @@ const Navbar = () => {
       console.error('Error signing out:', error);
       navigate('/');
     }
-  };
+  }, [signOut, navigate]);
 
-  // Função de toggle com prevenção de propagação
-  const toggleProfileMenu = (e: React.MouseEvent) => {
+  // Toggle do menu com prevenção de propagação
+  const toggleProfileMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setShowProfileMenu(prev => !prev);
-  };
-
-  // Função para prevenir fechamento quando clicando no menu
-  const handleMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
+  }, []);
 
   return (
     <>
@@ -196,16 +199,16 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="relative" ref={dropdownRef}>
+                <div className="relative">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">
                       {user.email}
                     </span>
                     <button
+                      ref={buttonRef}
                       type="button"
                       onClick={toggleProfileMenu}
-                      onMouseDown={(e) => e.preventDefault()}
-                      className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-md p-1 select-none"
+                      className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-md p-1"
                     >
                       <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                         {avatarUrl ? (
@@ -232,9 +235,12 @@ const Navbar = () => {
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
                     <div 
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[9999] animate-in fade-in-0 zoom-in-95 duration-100"
-                      onClick={handleMenuClick}
-                      onMouseDown={(e) => e.stopPropagation()}
+                      ref={menuRef}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-[9999]"
+                      style={{ 
+                        animation: 'fadeIn 0.15s ease-out',
+                        transformOrigin: 'top right'
+                      }}
                     >
                       <div className="py-1">
                         <button
@@ -341,6 +347,21 @@ const Navbar = () => {
           </div>
         </div>
       )}
+      
+      {/* CSS para animação */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95) translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+      `}</style>
+      
       <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </>
   );
