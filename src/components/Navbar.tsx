@@ -129,6 +129,11 @@ const Navbar = () => {
     e.stopPropagation();
     setShowProfileMenu(!showProfileMenu);
   };
+
+  const handleProfileMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
@@ -166,10 +171,10 @@ const Navbar = () => {
                     {user.email}
                   </span>
                   <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    onClick={handleProfileMenuToggle}
                     className="flex items-center space-x-2"
                   >
-                    onClick={handleProfileMenuToggle}
+                    <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
@@ -189,15 +194,14 @@ const Navbar = () => {
                     </div>
                     <ChevronDown className="h-4 w-4 text-gray-500" />
                   </button>
-                  {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]">
-                      <div className="py-1">
-                        <button
                     <div 
                       className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]"
                       onClick={handleProfileMenuClick}
                     >
+                      <div className="py-1">
+                        <button
+                          onClick={() => handleProfileNavigation('personal')}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <User className="h-4 w-4 mr-2" />
@@ -265,7 +269,6 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
-      {/* Mobile Sidebar */}
       {isMobileMenuOpen && user && (
         <div className="fixed inset-0 z-40">
           <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setIsMobileMenuOpen(false)}></div>
@@ -308,7 +311,4 @@ const Navbar = () => {
   );
 };
 
-  const handleProfileMenuClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
 export default Navbar;
