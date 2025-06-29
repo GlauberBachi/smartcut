@@ -48,7 +48,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30, delay = 2000): Promise<any> => {
+const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 40, delay = 3000): Promise<any> => {
   for (let i = 0; i < retries; i++) {
     console.log(`Attempt ${i + 1}: Checking for user data...`);
     
@@ -60,7 +60,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
         console.log(`Attempt ${i + 1}: Auth user not found yet - ${authError?.message || 'No user'}`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000); // Gradual increase, max 5 seconds
+          delay = Math.min(delay * 1.05, 8000); // Very gradual increase, max 8 seconds
           continue;
         }
         return { data: null, error: new Error('Auth user not found after all retries') };
@@ -79,7 +79,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
         console.log(`Attempt ${i + 1} user table error:`, userError.message);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000);
+          delay = Math.min(delay * 1.05, 8000);
           continue;
         }
         return { data: null, error: userError };
@@ -89,7 +89,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
         console.log(`Attempt ${i + 1}: User not found in public.users table yet`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000);
+          delay = Math.min(delay * 1.05, 8000);
           continue;
         }
         return { data: null, error: new Error('User not found in public.users table') };
@@ -106,7 +106,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
         console.log(`Attempt ${i + 1} profile error:`, profileError.message);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000);
+          delay = Math.min(delay * 1.05, 8000);
           continue;
         }
         return { data: null, error: profileError };
@@ -116,7 +116,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
         console.log(`Attempt ${i + 1}: Profile not found yet`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000);
+          delay = Math.min(delay * 1.05, 8000);
           continue;
         }
         return { data: null, error: new Error('Profile not found') };
@@ -133,7 +133,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
         console.log(`Attempt ${i + 1} subscription error:`, subscriptionError.message);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000);
+          delay = Math.min(delay * 1.05, 8000);
           continue;
         }
         return { data: null, error: subscriptionError };
@@ -143,7 +143,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
         console.log(`Attempt ${i + 1}: Subscription not found yet`);
         if (i < retries - 1) {
           await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000);
+          delay = Math.min(delay * 1.05, 8000);
           continue;
         }
         return { data: null, error: new Error('Subscription not found') };
@@ -156,7 +156,7 @@ const waitForUserData = async (supabaseAdmin: any, userId: string, retries = 30,
       console.log(`Attempt ${i + 1} unexpected error:`, error);
       if (i < retries - 1) {
         await new Promise(resolve => setTimeout(resolve, delay));
-        delay = Math.min(delay * 1.1, 5000);
+        delay = Math.min(delay * 1.05, 8000);
         continue;
       }
       return { data: null, error };
@@ -249,7 +249,7 @@ Deno.serve(async (req) => {
 
     // Wait for user data to be available with longer timeout and more retries
     console.log('Waiting for user data to be available...');
-    const { data: userData, error: userDataError } = await waitForUserData(supabaseAdmin, user.id, 30, 2000);
+    const { data: userData, error: userDataError } = await waitForUserData(supabaseAdmin, user.id, 40, 3000);
 
     if (userDataError || !userData) {
       console.error('Error getting complete user data after retries:', userDataError);
