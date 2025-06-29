@@ -485,9 +485,9 @@ const Profile = () => {
   }
 
   const renderPersonalInfo = () => (
-    <div className="max-w-2xl mx-auto min-h-[calc(100vh-13rem)] flex flex-col">
+    <div className="max-w-2xl mx-auto">
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Informações Pessoais</h2>
-      <form onSubmit={handleProfileUpdate} className="space-y-6 flex-1">
+      <form onSubmit={handleProfileUpdate} className="space-y-6">
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           <div>
             <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">
@@ -778,25 +778,6 @@ const Profile = () => {
     </div>
   );
 
-  const renderContent = () => {
-    const tab = location.state?.activeTab || 'personal';
-    
-    switch (tab) {
-      case 'personal':
-        return renderPersonalInfo();
-      case 'avatar':
-        return renderAvatarSection();
-      case 'password':
-        return renderPasswordSection();
-      case 'subscription':
-        return renderSubscriptionSection();
-      case 'danger':
-        return renderDangerSection();
-      default:
-        return renderPersonalInfo();
-    }
-  };
-
   // Se ainda estiver carregando, mostrar loading
   if (isLoading) {
     return (
@@ -816,6 +797,9 @@ const Profile = () => {
     );
   }
 
+  // Sempre renderizar informações pessoais se não houver aba específica
+  const activeTab = location.state?.activeTab || 'personal';
+
   return (
     <div className="py-8 px-4">
       {error && (
@@ -829,7 +813,24 @@ const Profile = () => {
         </div>
       )}
 
-      {renderContent()}
+      <div className="bg-white rounded-lg shadow p-6">
+        {(() => {
+          switch (activeTab) {
+            case 'personal':
+              return renderPersonalInfo();
+            case 'avatar':
+              return renderAvatarSection();
+            case 'password':
+              return renderPasswordSection();
+            case 'subscription':
+              return renderSubscriptionSection();
+            case 'danger':
+              return renderDangerSection();
+            default:
+              return renderPersonalInfo();
+          }
+        })()}
+      </div>
 
       {/* Confirmation Modal */}
       {showCancelConfirm && (
