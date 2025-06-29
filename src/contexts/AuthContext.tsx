@@ -53,9 +53,9 @@ const getReadableErrorMessage = (error: AuthError): string => {
 };
 
 const createStripeCustomer = async (accessToken: string) => {
-  const maxRetries = 5;
+  const maxRetries = 3;
   let retryCount = 0;
-  let delay = 3000; // Initial delay of 3 seconds
+  let delay = 5000; // Initial delay of 5 seconds to allow database records to be committed
   console.log('Starting createStripeCustomer with token length:', accessToken.length);
 
   while (retryCount < maxRetries) {
@@ -73,7 +73,7 @@ const createStripeCustomer = async (accessToken: string) => {
         await new Promise(resolve => setTimeout(resolve, delay));
         if (retryCount < maxRetries - 1) {
           retryCount++;
-          delay = Math.min(delay * 1.3, 10000); // Gradual backoff, max 10 seconds
+          delay = Math.min(delay * 1.5, 15000); // Gradual backoff, max 15 seconds
           continue;
         }
         throw new Error('No valid session available after retries');
@@ -106,10 +106,22 @@ const createStripeCustomer = async (accessToken: string) => {
           throw new Error('Invalid or expired token. Please sign in again.');
         }
         
+        // If it's a 404 (user data not found), retry with longer delay
+        if (response.status === 404 && retryCount < maxRetries - 1) {
+          console.log(`User data not ready yet, retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          retryCount++;
+          delay = Math.min(delay * 1.5, 15000);
+          continue;
+        }
+        
         throw new Error(`Failed to create Stripe customer: ${errorText}`);
       }
 
-      return await response.json();
+      const result = await response.json();
+      console.log('Stripe customer creation successful:', result);
+      return result;
+
     } catch (error) {
       console.error('Error in createStripeCustomer:', error);
       
@@ -121,8 +133,10 @@ const createStripeCustomer = async (accessToken: string) => {
       }
       
       if (error instanceof Error && retryCount < maxRetries - 1) {
+        console.log(`Retrying createStripeCustomer in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
         retryCount++;
-        delay = Math.min(delay * 1.3, 10000); // Gradual backoff, max 10 seconds
+        delay = Math.min(delay * 1.5, 15000); // Gradual backoff, max 15 seconds
+        await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
       throw error;
@@ -154,11 +168,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
-      // If we have a new session, ensure Stripe customer exists
+      // If we have a new session, ensure Stripe customer exists with delay
       if (session?.access_token) {
-        createStripeCustomer(session.access_token).catch(error => {
-          console.error('Error creating Stripe customer during auth change:', error);
-        });
+        // Add a longer delay for new user creation to ensure database records are committed
+        setTimeout(async () => {
+          try {
+            await createStripeCustomer(session.access_token);
+          } catch (error) {
+            console.error('Error creating Stripe customer during auth change:', error);
+          }
+        }, 3000); // 3 second delay
       }
       
       setLoading(false);
@@ -188,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Get the session after signup
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Create Stripe customer if we have a session (with delay to ensure DB records exist)
+      // Create Stripe customer if we have a session (with longer delay to ensure DB records exist)
       if (session?.access_token) {
         setTimeout(async () => {
           try {
@@ -196,7 +215,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (stripeError) {
             console.error('Error creating Stripe customer during signup:', stripeError);
           }
-        }, 2000);
+        }, 5000); // 5 second delay for signup
       }
       
       setError(null);
@@ -233,7 +252,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (stripeError) {
             console.error('Error creating Stripe customer during signin:', stripeError);
           }
-        }, 2000);
+        }, 3000); // 3 second delay for signin
       }
     } catch (error) {
       const errorMessage = error instanceof AuthError 
@@ -315,7 +334,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (stripeError) {
             console.error('Error creating Stripe customer during Google sign in:', stripeError);
           }
-        }, 2000);
+        }, 3000); // 3 second delay for Google signin
       }
 
       setError(null);

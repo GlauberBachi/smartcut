@@ -48,56 +48,97 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
-const waitForUserData = async (supabaseClient: any, userId: string, retries = 15, delay = 1000): Promise<any> => {
+const waitForUserData = async (supabaseClient: any, userId: string, retries = 20, delay = 2000): Promise<any> => {
   for (let i = 0; i < retries; i++) {
     console.log(`Attempt ${i + 1}: Checking for user data...`);
     
-    const { data, error } = await supabaseClient
-      .from('users')
-      .select('email, role')
-      .eq('id', userId)
-      .maybeSingle();
+    try {
+      // Check if user exists in auth.users first
+      const { data: authUser, error: authError } = await supabaseClient.auth.admin.getUserById(userId);
+      
+      if (authError || !authUser?.user) {
+        console.log(`Attempt ${i + 1}: Auth user not found yet`);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { data: null, error: new Error('Auth user not found') };
+      }
 
-    if (error) {
-      console.log(`Attempt ${i + 1} error:`, error.message);
-    }
+      // Check if user exists in public.users table
+      const { data: userData, error: userError } = await supabaseClient
+        .from('users')
+        .select('email, role')
+        .eq('id', userId)
+        .maybeSingle();
 
-    if (data) {
-      // Also check if profile and subscription exist
-      const { data: profile } = await supabaseClient
+      if (userError) {
+        console.log(`Attempt ${i + 1} user table error:`, userError.message);
+      }
+
+      if (!userData) {
+        console.log(`Attempt ${i + 1}: User not found in public.users table yet`);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { data: null, error: new Error('User not found in public.users table') };
+      }
+
+      // Check if profile exists
+      const { data: profile, error: profileError } = await supabaseClient
         .from('profiles')
         .select('id')
         .eq('id', userId)
         .maybeSingle();
 
-      const { data: subscription } = await supabaseClient
+      if (profileError) {
+        console.log(`Attempt ${i + 1} profile error:`, profileError.message);
+      }
+
+      if (!profile) {
+        console.log(`Attempt ${i + 1}: Profile not found yet`);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { data: null, error: new Error('Profile not found') };
+      }
+
+      // Check if subscription exists
+      const { data: subscription, error: subscriptionError } = await supabaseClient
         .from('subscriptions')
         .select('id')
         .eq('user_id', userId)
         .maybeSingle();
 
-      if (!profile || !subscription) {
-        console.log('Profile or subscription not found yet, waiting...');
-        if (i < retries - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.2, 5000); // Gradual backoff, max 5 seconds
-          continue;
-        }
-        return { data: null, error: new Error('Profile or subscription not found') };
+      if (subscriptionError) {
+        console.log(`Attempt ${i + 1} subscription error:`, subscriptionError.message);
       }
 
-      console.log('User data found:', { email: data.email, role: data.role });
-      return { data, error: null };
-    }
+      if (!subscription) {
+        console.log(`Attempt ${i + 1}: Subscription not found yet`);
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        return { data: null, error: new Error('Subscription not found') };
+      }
 
-    if (i < retries - 1) {
-      console.log(`Attempt ${i + 1}: Waiting ${delay}ms before next attempt...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      delay = Math.min(delay * 1.2, 5000); // Gradual backoff, max 5 seconds
+      console.log(`Attempt ${i + 1}: All user data found successfully`);
+      return { data: userData, error: null };
+
+    } catch (error) {
+      console.log(`Attempt ${i + 1} unexpected error:`, error);
+      if (i < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        continue;
+      }
+      return { data: null, error };
     }
   }
 
-  console.log('Failed to find user data after all attempts');
+  console.log('Failed to find complete user data after all attempts');
   return { data: null, error: new Error('User data not found after multiple attempts') };
 };
 
@@ -194,8 +235,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Wait for user data to be available
-    const { data: userData, error: userDataError } = await waitForUserData(supabaseClient, user.id);
+    // Wait for user data to be available with longer timeout and more retries
+    const { data: userData, error: userDataError } = await waitForUserData(supabaseClient, user.id, 20, 2000);
 
     if (userDataError || !userData) {
       console.error('Error getting complete user data after retries:', userDataError);
