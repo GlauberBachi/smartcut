@@ -177,7 +177,7 @@ const Navbar = () => {
                     onClick={handleProfileMenuToggle}
                     className="flex items-center space-x-2"
                   >
-                    <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
+                    <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
@@ -200,18 +200,23 @@ const Navbar = () => {
                   {showProfileMenu && (
                     <div 
                       className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]"
-                      onClick={handleProfileMenuClick}
                     >
                       <div className="py-1">
                         <button
-                          onClick={() => handleProfileNavigation('personal')}
+                          onClick={() => {
+                            handleProfileNavigation('personal');
+                            setShowProfileMenu(false);
+                          }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <User className="h-4 w-4 mr-2" />
                           {t('nav.profile.personalInfo')}
                         </button>
                         <button
-                          onClick={() => handleProfileNavigation('avatar')}
+                          onClick={() => {
+                            handleProfileNavigation('avatar');
+                            setShowProfileMenu(false);
+                          }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Camera className="h-4 w-4 mr-2" />
@@ -219,21 +224,27 @@ const Navbar = () => {
                         </button>
                         <Link
                           to="/notifications"
-                          onClick={handleMenuItemClick}
+                          onClick={() => setShowProfileMenu(false)}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           {t('nav.profile.notifications')}
                         </Link>
                         <button
-                          onClick={() => handleProfileNavigation('password')}
+                          onClick={() => {
+                            handleProfileNavigation('password');
+                            setShowProfileMenu(false);
+                          }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Key className="h-4 w-4 mr-2" />
                           {t('nav.profile.password')}
                         </button>
                         <button
-                          onClick={() => navigate('/pricing')}
+                          onClick={() => {
+                            navigate('/pricing');
+                            setShowProfileMenu(false);
+                          }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
@@ -241,7 +252,7 @@ const Navbar = () => {
                         </button>
                         <button 
                           onClick={() => {
-                            handleMenuItemClick();
+                            setShowProfileMenu(false);
                             navigate('/profile', { state: { activeTab: 'danger' } });
                           }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
