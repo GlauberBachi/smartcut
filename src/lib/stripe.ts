@@ -1,13 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase } from './supabaseClient';
 
 export async function createCheckoutSession(mode: 'payment' | 'subscription', locale = 'pt-BR') {
   // First check if we have a session
@@ -30,7 +21,7 @@ export async function createCheckoutSession(mode: 'payment' | 'subscription', lo
     throw new Error('Your session has expired. Please sign in again.');
   }
 
-  const response = await fetch(`${supabaseUrl}/functions/v1/stripe-checkout`, {
+  const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

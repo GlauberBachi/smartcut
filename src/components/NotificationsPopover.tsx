@@ -1,21 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabaseClient';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Bell, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-  {
-    auth: {
-      persistSession: true,
-      storageKey: 'app-auth',
-      storage: localStorage
-    }
-  }
-);
 
 interface Notification {
   id: string;

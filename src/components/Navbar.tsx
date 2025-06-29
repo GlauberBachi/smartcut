@@ -4,20 +4,8 @@ import { User, Camera, Key, CreditCard, ChevronDown, Bell, Menu, X, LayoutDashbo
 import { useAuth } from '../contexts/AuthContext';
 import AuthModal from './AuthModal';
 import LanguageSwitcher from './LanguageSwitcher';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../lib/supabaseClient';
 import { useTranslation } from 'react-i18next';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL || '',
-  import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-  {
-    auth: {
-      persistSession: true,
-      storageKey: 'app-auth',
-      storage: localStorage
-    }
-  }
-);
 
 const Navbar = () => {
   const { user, signOut } = useAuth();
