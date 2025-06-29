@@ -165,7 +165,31 @@ Deno.serve(async (req) => {
 
     console.log('Got user:', user.id, 'email:', user.email);
 
-    // Step 1: Call the PostgreSQL function to ensure local records and acquire lock
+    // Step 1: Check if user already has a real Stripe customer (quick check)
+    console.log('Quick check for existing Stripe customer...');
+    const { data: quickCheck } = await supabaseAdmin
+      .from('stripe_customers')
+      .select('customer_id')
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (quickCheck?.customer_id && !quickCheck.customer_id.startsWith('temp_')) {
+      console.log('User already has real Stripe customer:', quickCheck.customer_id);
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          customerId: quickCheck.customer_id,
+          message: 'User already exists with Stripe customer'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
+    // Step 2: Call the PostgreSQL function to ensure local records and acquire lock
     console.log('Calling create_user_complete RPC function...');
     const { data: rpcResult, error: rpcError } = await supabaseAdmin
       .rpc('create_user_complete', {
@@ -238,7 +262,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 2: Re-check if Stripe customer already exists (race condition protection)
+    // Step 3: Final check if Stripe customer already exists (race condition protection)
     console.log('Re-checking Stripe customer status...');
     const { data: existingCustomer } = await supabaseAdmin
       .from('stripe_customers')
@@ -294,7 +318,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 3: Create real Stripe customer (we have the lock and no real customer exists)
+    // Step 4: Create real Stripe customer (we have the lock and no real customer exists)
     console.log('Creating real Stripe customer...');
     console.log('Using Stripe key prefix:', stripeKey.substring(0, 7));
     
@@ -316,7 +340,7 @@ Deno.serve(async (req) => {
 
       console.log('Created Stripe customer:', customer.id);
 
-      // Step 4: Create free subscription
+      // Step 5: Create free subscription
       const subscription = await stripe.subscriptions.create({
         customer: customer.id,
         items: [{ 
@@ -333,7 +357,7 @@ Deno.serve(async (req) => {
       console.log('Created free subscription:', subscription.id);
       await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_subscription_response', null, subscription);
 
-      // Step 5: Update database with real Stripe IDs
+      // Step 6: Update database with real Stripe IDs
       const { error: customerUpdateError } = await supabaseAdmin
         .from('stripe_customers')
         .update({
@@ -357,6 +381,7 @@ Deno.serve(async (req) => {
         throw customerUpdateError;
       }
 
+      // Step 7: Update subscription record
       const { error: subscriptionUpdateError } = await supabaseAdmin
         .from('stripe_subscriptions')
         .update({
@@ -375,7 +400,7 @@ Deno.serve(async (req) => {
         await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_subscription_update_error', null, null, subscriptionUpdateError);
       }
 
-      // Step 6: Update user creation state to completed
+      // Step 8: Update user creation state to completed
       await supabaseAdmin
         .from('user_creation_state')
         .update({
