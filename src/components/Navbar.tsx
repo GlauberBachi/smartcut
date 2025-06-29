@@ -20,8 +20,10 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    setShowProfileMenu(false);
-    setIsMobileMenuOpen(false);
+    if (!user) {
+      setShowProfileMenu(false);
+      setIsMobileMenuOpen(false);
+    }
   }, [user]);
 
   useEffect(() => {
@@ -89,8 +91,10 @@ const Navbar = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
   }, []);
 
   const getInitials = (email: string) => {
@@ -112,6 +116,11 @@ const Navbar = () => {
     setShowProfileMenu(false);
   };
 
+  const toggleProfileMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowProfileMenu(!showProfileMenu);
+  };
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
@@ -150,7 +159,7 @@ const Navbar = () => {
                     {user.email}
                   </span>
                   <button
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
+                    onClick={toggleProfileMenu}
                     className="flex items-center space-x-2"
                   >
                     <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
