@@ -17,6 +17,7 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -81,24 +82,24 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   }, [user]);
 
-  // Global click handler - mais simples
+  // Abordagem mais simples para click outside
   useEffect(() => {
-    const handleGlobalClick = () => {
-      if (showProfileMenu) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
     };
 
-    // Adiciona o listener apenas quando o menu está aberto
+    // Só adiciona o listener se o menu estiver aberto
     if (showProfileMenu) {
       // Pequeno delay para evitar fechamento imediato
       const timer = setTimeout(() => {
-        document.addEventListener('click', handleGlobalClick);
-      }, 100);
-      
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 50);
+
       return () => {
         clearTimeout(timer);
-        document.removeEventListener('click', handleGlobalClick);
+        document.removeEventListener('mousedown', handleClickOutside);
       };
     }
   }, [showProfileMenu]);
@@ -143,15 +144,9 @@ const Navbar = () => {
     }
   };
 
-  // Função para abrir o menu - previne propagação
-  const openProfileMenu = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowProfileMenu(true);
-  };
-
-  // Função para prevenir fechamento quando clica no menu
-  const preventClose = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  // Função simples para toggle do menu
+  const toggleProfileMenu = () => {
+    setShowProfileMenu(prev => !prev);
   };
 
   return (
@@ -186,14 +181,15 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="relative">
+                <div className="relative" ref={dropdownRef}>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">
                       {user.email}
                     </span>
                     <button
-                      onClick={openProfileMenu}
-                      className="flex items-center space-x-2 focus:outline-none"
+                      onClick={toggleProfileMenu}
+                      className="flex items-center space-x-2 p-1 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                      type="button"
                     >
                       <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                         {avatarUrl ? (
@@ -213,16 +209,13 @@ const Navbar = () => {
                           </span>
                         )}
                       </div>
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                      <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
                   
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div 
-                      className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
-                      onClick={preventClose}
-                    >
+                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
