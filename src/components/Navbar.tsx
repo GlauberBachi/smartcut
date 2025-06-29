@@ -17,7 +17,16 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const profileMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Usar um ref para controlar se o componente está montado
+  const isMountedRef = useRef(true);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -82,19 +91,28 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   }, [user]);
 
-  // Abordagem mais simples para click outside
+  // Implementação mais robusta do click outside
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false);
+    const handleClickOutside = (event: Event) => {
+      if (!isMountedRef.current) return;
+      
+      const target = event.target as Node;
+      if (dropdownRef.current && !dropdownRef.current.contains(target)) {
+        if (showProfileMenu) {
+          setShowProfileMenu(false);
+        }
       }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
     };
-  }, [profileMenuRef]);
+
+    // Usar capture para garantir que o evento seja capturado
+    document.addEventListener('click', handleClickOutside, true);
+    document.addEventListener('touchstart', handleClickOutside, true);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside, true);
+      document.removeEventListener('touchstart', handleClickOutside, true);
+    };
+  }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
@@ -112,24 +130,24 @@ const Navbar = () => {
 
   const handleProfileNavigation = (tab: string) => {
     setShowProfileMenu(false);
-    // Use setTimeout to ensure state update happens first
-    setTimeout(() => {
+    // Usar requestAnimationFrame para garantir que o estado seja atualizado
+    requestAnimationFrame(() => {
       navigate('/profile', { state: { activeTab: tab } });
-    }, 0);
+    });
   };
 
   const handleNotificationsNavigation = () => {
     setShowProfileMenu(false);
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       navigate('/notifications');
-    }, 0);
+    });
   };
 
   const handlePricingNavigation = () => {
     setShowProfileMenu(false);
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       navigate('/pricing');
-    }, 0);
+    });
   };
 
   const handleSignOutClick = async () => {
@@ -143,9 +161,14 @@ const Navbar = () => {
     }
   };
 
-  // Função mais simples para toggle
-  const toggleProfileMenu = () => {
-    setShowProfileMenu(!showProfileMenu);
+  // Função de toggle mais robusta
+  const toggleProfileMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!isMountedRef.current) return;
+    
+    setShowProfileMenu(prev => !prev);
   };
 
   return (
@@ -180,14 +203,17 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="relative" ref={profileMenuRef}>
+                <div className="relative" ref={dropdownRef}>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">
                       {user.email}
                     </span>
                     <button
+                      type="button"
                       onClick={toggleProfileMenu}
-                      className="flex items-center space-x-2"
+                      className="flex items-center space-x-2 focus:outline-none"
+                      aria-expanded={showProfileMenu}
+                      aria-haspopup="true"
                     >
                       <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                         {avatarUrl ? (
@@ -207,18 +233,22 @@ const Navbar = () => {
                           </span>
                         )}
                       </div>
-                      <ChevronDown className="h-4 w-4 text-gray-500" />
+                      <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''}`} />
                     </button>
                   </div>
+                  
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
                     <div 
                       className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
+                      role="menu"
+                      aria-orientation="vertical"
                     >
-                      <div className="py-1">
+                      <div className="py-1" role="none">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           <User className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.personalInfo')}</span>
@@ -226,6 +256,7 @@ const Navbar = () => {
                         <button
                           onClick={() => handleProfileNavigation('avatar')}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           <Camera className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.avatar')}</span>
@@ -233,6 +264,7 @@ const Navbar = () => {
                         <button
                           onClick={handleNotificationsNavigation}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.notifications')}</span>
@@ -240,6 +272,7 @@ const Navbar = () => {
                         <button
                           onClick={() => handleProfileNavigation('password')}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           <Key className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.password')}</span>
@@ -247,6 +280,7 @@ const Navbar = () => {
                         <button
                           onClick={handlePricingNavigation}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           <span>Assinaturas</span>
@@ -254,6 +288,7 @@ const Navbar = () => {
                         <button 
                           onClick={() => handleProfileNavigation('danger')}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           <span>Excluir conta</span>
@@ -262,6 +297,7 @@ const Navbar = () => {
                         <button
                           onClick={handleSignOutClick}
                           className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                          role="menuitem"
                         >
                           {t('nav.profile.logout')}
                         </button>
@@ -281,6 +317,7 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+      
       {/* Mobile Sidebar */}
       {isMobileMenuOpen && user && (
         <div className="fixed inset-0 z-40">
