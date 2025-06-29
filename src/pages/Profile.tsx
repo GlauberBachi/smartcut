@@ -63,6 +63,8 @@ const Profile = () => {
     const tabFromState = location.state?.activeTab;
     if (tabFromState) {
       setActiveTab(tabFromState);
+      // Clear the state to prevent issues with browser back/forward
+      window.history.replaceState({}, document.title);
     }
   }, [location.state]);
 
@@ -478,6 +480,13 @@ const Profile = () => {
     return format(date, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
   };
 
+  // Clear success/error messages when switching tabs
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setError('');
+    setSuccess('');
+  };
+
   if (isLoading) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-8">
@@ -515,8 +524,8 @@ const Profile = () => {
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
               <button
-                onClick={() => setActiveTab('personal')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                onClick={() => handleTabChange('personal')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
                   activeTab === 'personal'
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -526,8 +535,8 @@ const Profile = () => {
                 Informações Pessoais
               </button>
               <button
-                onClick={() => setActiveTab('avatar')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                onClick={() => handleTabChange('avatar')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
                   activeTab === 'avatar'
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -537,8 +546,8 @@ const Profile = () => {
                 Foto de Perfil
               </button>
               <button
-                onClick={() => setActiveTab('password')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                onClick={() => handleTabChange('password')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
                   activeTab === 'password'
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -548,8 +557,8 @@ const Profile = () => {
                 Alterar Senha
               </button>
               <button
-                onClick={() => setActiveTab('subscription')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                onClick={() => handleTabChange('subscription')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
                   activeTab === 'subscription'
                     ? 'border-primary-500 text-primary-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -559,8 +568,8 @@ const Profile = () => {
                 Assinatura
               </button>
               <button
-                onClick={() => setActiveTab('danger')}
-                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center ${
+                onClick={() => handleTabChange('danger')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
                   activeTab === 'danger'
                     ? 'border-red-500 text-red-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
