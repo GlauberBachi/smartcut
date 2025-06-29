@@ -168,6 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [ensureUserTimeoutRef, setEnsureUserTimeoutRef] = useState<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -183,18 +184,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (session?.access_token && currentUser && 
           (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         
-        // Add progressive delay based on event type
-        const delay = event === 'SIGNED_IN' ? 3000 : 1000;
+        // Clear any existing timeout to prevent multiple calls
+        if (ensureUserTimeoutRef) {
+          clearTimeout(ensureUserTimeoutRef);
+        }
         
-        setTimeout(async () => {
+        // Add progressive delay based on event type with debounce
+        const delay = event === 'SIGNED_IN' ? 3000 : 5000;
+        
+        const timeoutId = setTimeout(async () => {
           try {
             console.log('Ensuring complete user record for:', currentUser.id);
             await ensureUserComplete(session.access_token, currentUser.id);
           } catch (error) {
             console.error('Error ensuring complete user record:', error);
             // Don't show error to user for this background operation
+          } finally {
+            setEnsureUserTimeoutRef(null);
           }
         }, delay);
+        
+        setEnsureUserTimeoutRef(timeoutId);
       }
       
       setLoading(false);
@@ -202,6 +212,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       subscription.unsubscribe();
+      if (ensureUserTimeoutRef) {
+        clearTimeout(ensureUserTimeoutRef);
+      }
     };
   }, []);
 

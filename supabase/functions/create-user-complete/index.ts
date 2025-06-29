@@ -165,6 +165,117 @@ Deno.serve(async (req) => {
 
     console.log('Got user:', user.id, 'email:', user.email);
 
+    // Step 1: Call the PostgreSQL function to ensure local records and acquire lock
+    console.log('Calling create_user_complete RPC function...');
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin
+      .rpc('create_user_complete', {
+        p_user_id: user.id,
+        p_email: user.email,
+        p_force_recreate: forceRecreate
+      });
+
+    if (rpcError) {
+      console.error('Error calling create_user_complete RPC:', rpcError);
+      await logStripeEvent(supabaseAdmin, user.id, null, 'rpc_call_failed', null, null, rpcError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to initialize user creation',
+          details: rpcError.message 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
+
+    console.log('RPC result:', rpcResult);
+
+    // Check if user creation is already completed
+    if (rpcResult.success && rpcResult.state === 'completed') {
+      console.log('User creation already completed');
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          message: 'User already exists with complete Stripe integration',
+          state: 'completed'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
+    // Check if we failed to acquire lock (another process is working)
+    if (!rpcResult.success && rpcResult.state === 'locked') {
+      console.log('User creation in progress by another process');
+      return new Response(
+        JSON.stringify({ 
+          success: false,
+          message: 'User creation in progress',
+          state: 'locked'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 409, // Conflict
+        }
+      );
+    }
+
+    // If RPC failed for other reasons
+    if (!rpcResult.success) {
+      console.error('RPC failed:', rpcResult);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to prepare user creation',
+          details: rpcResult.error || rpcResult.message
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500
+        }
+      );
+    }
+
+    // Step 2: Re-check if Stripe customer already exists (race condition protection)
+    console.log('Re-checking Stripe customer status...');
+    const { data: existingCustomer } = await supabaseAdmin
+      .from('stripe_customers')
+      .select('customer_id')
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    // If customer_id is real (not temp_), another process already created the Stripe customer
+    if (existingCustomer?.customer_id && !existingCustomer.customer_id.startsWith('temp_')) {
+      console.log('Real Stripe customer already exists:', existingCustomer.customer_id);
+      
+      // Update state to completed
+      await supabaseAdmin
+        .from('user_creation_state')
+        .update({
+          state: 'completed',
+          step: 'Stripe customer already existed',
+          completed_at: new Date().toISOString(),
+          locked_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          customerId: existingCustomer.customer_id,
+          message: 'User already exists with Stripe customer'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
     // Wait for auth user to be fully available
     const { data: authUserData, error: authUserError } = await waitForUserData(supabaseAdmin, user.id);
     
@@ -183,71 +294,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Step 1: Create all local database records
-    console.log('Creating local database records...');
-    const { data: createResult, error: createError } = await supabaseAdmin
-      .rpc('create_user_complete', {
-        p_user_id: user.id,
-        p_email: user.email,
-        p_force_recreate: forceRecreate
-      });
-
-    if (createError) {
-      console.error('Error creating local records:', createError);
-      await logStripeEvent(supabaseAdmin, user.id, null, 'local_creation_failed', null, null, createError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create local user records',
-          details: createError.message 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
-    }
-
-    if (!createResult.success) {
-      console.error('Local creation failed:', createResult);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create user records',
-          details: createResult.message,
-          state: createResult.state
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400
-        }
-      );
-    }
-
-    console.log('Local records created successfully');
-
-    // Step 2: Check if we already have a real Stripe customer
-    const { data: existingCustomer } = await supabaseAdmin
-      .from('stripe_customers')
-      .select('customer_id')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .maybeSingle();
-
-    if (existingCustomer?.customer_id && !existingCustomer.customer_id.startsWith('temp_')) {
-      console.log('Real Stripe customer already exists:', existingCustomer.customer_id);
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          customerId: existingCustomer.customer_id,
-          message: 'User already exists with Stripe customer'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    }
-
-    // Step 3: Create real Stripe customer
+    // Step 3: Create real Stripe customer (we have the lock and no real customer exists)
     console.log('Creating real Stripe customer...');
     console.log('Using Stripe key prefix:', stripeKey.substring(0, 7));
     
@@ -328,6 +375,18 @@ Deno.serve(async (req) => {
         await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_subscription_update_error', null, null, subscriptionUpdateError);
       }
 
+      // Step 6: Update user creation state to completed
+      await supabaseAdmin
+        .from('user_creation_state')
+        .update({
+          state: 'completed',
+          step: 'Stripe integration completed successfully',
+          completed_at: new Date().toISOString(),
+          locked_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
       console.log('Successfully created complete user with Stripe integration');
 
       return new Response(
@@ -347,6 +406,18 @@ Deno.serve(async (req) => {
       console.error('Stripe API Error:', stripeError);
       await logStripeEvent(supabaseAdmin, user.id, null, 'stripe_api_error', customerData, null, stripeError);
       
+      // Update user creation state to failed
+      await supabaseAdmin
+        .from('user_creation_state')
+        .update({
+          state: 'failed',
+          step: 'Stripe API error',
+          error_message: stripeError.message,
+          locked_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
       // Return detailed error information
       return new Response(
         JSON.stringify({
