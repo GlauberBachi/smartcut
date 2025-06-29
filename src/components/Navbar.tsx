@@ -20,10 +20,8 @@ const Navbar = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) {
-      setShowProfileMenu(false);
-      setIsMobileMenuOpen(false);
-    }
+    setShowProfileMenu(false);
+    setIsMobileMenuOpen(false);
   }, [user]);
 
   useEffect(() => {
@@ -95,7 +93,7 @@ const Navbar = () => {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, []);
+  }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
@@ -113,17 +111,35 @@ const Navbar = () => {
 
   const handleProfileNavigation = (tab: string) => {
     setShowProfileMenu(false);
-    navigate('/profile', { state: { activeTab: tab } });
+    // Use setTimeout to ensure state update happens first
+    setTimeout(() => {
+      navigate('/profile', { state: { activeTab: tab } });
+    }, 0);
   };
 
   const handleNotificationsNavigation = () => {
     setShowProfileMenu(false);
-    navigate('/notifications');
+    setTimeout(() => {
+      navigate('/notifications');
+    }, 0);
   };
 
   const handlePricingNavigation = () => {
     setShowProfileMenu(false);
-    navigate('/pricing');
+    setTimeout(() => {
+      navigate('/pricing');
+    }, 0);
+  };
+
+  const handleSignOutClick = async () => {
+    setShowProfileMenu(false);
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      navigate('/');
+    }
   };
 
   const toggleProfileMenu = (e: React.MouseEvent) => {
@@ -241,7 +257,7 @@ const Navbar = () => {
                         </button>
                         <hr className="my-1" />
                         <button
-                          onClick={handleSignOut}
+                          onClick={handleSignOutClick}
                           className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-gray-100"
                         >
                           {t('nav.profile.logout')}
