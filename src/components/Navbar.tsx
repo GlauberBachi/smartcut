@@ -17,7 +17,6 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -82,24 +81,26 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   }, [user]);
 
-  // Simplified click outside handler
+  // Global click handler - mais simples
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleGlobalClick = () => {
+      if (showProfileMenu) {
         setShowProfileMenu(false);
       }
-    }
-
-    if (showProfileMenu) {
-      // Add a small delay to prevent immediate closing
-      setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 10);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
     };
+
+    // Adiciona o listener apenas quando o menu está aberto
+    if (showProfileMenu) {
+      // Pequeno delay para evitar fechamento imediato
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleGlobalClick);
+      }, 100);
+      
+      return () => {
+        clearTimeout(timer);
+        document.removeEventListener('click', handleGlobalClick);
+      };
+    }
   }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
@@ -142,9 +143,15 @@ const Navbar = () => {
     }
   };
 
-  // Simple toggle function
-  const toggleDropdown = () => {
-    setShowProfileMenu(!showProfileMenu);
+  // Função para abrir o menu - previne propagação
+  const openProfileMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowProfileMenu(true);
+  };
+
+  // Função para prevenir fechamento quando clica no menu
+  const preventClose = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   return (
@@ -179,14 +186,14 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="relative" ref={dropdownRef}>
+                <div className="relative">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">
                       {user.email}
                     </span>
                     <button
-                      onClick={toggleDropdown}
-                      className="flex items-center space-x-2"
+                      onClick={openProfileMenu}
+                      className="flex items-center space-x-2 focus:outline-none"
                     >
                       <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                         {avatarUrl ? (
@@ -210,9 +217,12 @@ const Navbar = () => {
                     </button>
                   </div>
                   
-                  {/* Profile dropdown menu - usando conditional rendering simples */}
+                  {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                    <div 
+                      className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
+                      onClick={preventClose}
+                    >
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
