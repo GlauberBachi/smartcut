@@ -29,6 +29,7 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -96,13 +97,24 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      
+      // Não fechar se o clique foi no botão do perfil ou dentro do menu
+      if (
+        profileMenuRef.current && 
+        !profileMenuRef.current.contains(target) &&
+        profileButtonRef.current &&
+        !profileButtonRef.current.contains(target)
+      ) {
         setShowProfileMenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Só adicionar o listener se o menu estiver aberto
+    if (showProfileMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
   }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
@@ -156,11 +168,12 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="flex items-center space-x-2 relative" ref={profileMenuRef}>
+                <div className="flex items-center space-x-2 relative">
                   <span className="text-sm font-medium text-gray-700">
                     {user.email}
                   </span>
                   <button
+                    ref={profileButtonRef}
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
@@ -190,7 +203,8 @@ const Navbar = () => {
                   </button>
                   {showProfileMenu && (
                     <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]"
-                      onClick={(e) => e.stopPropagation()}
+                      ref={profileMenuRef}
+                      onMouseDown={(e) => e.stopPropagation()}
                     >
                       <div className="py-1">
                         <button
@@ -231,6 +245,7 @@ const Navbar = () => {
                         </button>
                         <button 
                           onClick={() => {
+                            setShowProfileMenu(false);
                             navigate('/profile', { state: { activeTab: 'danger' } });
                           }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
