@@ -141,6 +141,8 @@ const Navbar = () => {
   };
 
   const toggleProfileMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setShowProfileMenu(!showProfileMenu);
   };
 
@@ -184,6 +186,7 @@ const Navbar = () => {
                   </span>
                   <button
                     onClick={toggleProfileMenu}
+                    onMouseDown={(e) => e.preventDefault()}
                     className="flex items-center space-x-2"
                   >
                     <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
@@ -210,11 +213,13 @@ const Navbar = () => {
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
                     <div 
+                      onMouseDown={(e) => e.stopPropagation()}
                       className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
                     >
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
+                          onMouseDown={(e) => e.stopPropagation()}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <User className="h-4 w-4 mr-2" />
@@ -222,6 +227,7 @@ const Navbar = () => {
                         </button>
                         <button
                           onClick={() => handleProfileNavigation('avatar')}
+                          onMouseDown={(e) => e.stopPropagation()}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Camera className="h-4 w-4 mr-2" />
@@ -229,6 +235,7 @@ const Navbar = () => {
                         </button>
                         <button
                           onClick={handleNotificationsNavigation}
+                          onMouseDown={(e) => e.stopPropagation()}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Bell className="h-4 w-4 mr-2" />
@@ -236,6 +243,7 @@ const Navbar = () => {
                         </button>
                         <button
                           onClick={() => handleProfileNavigation('password')}
+                          onMouseDown={(e) => e.stopPropagation()}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Key className="h-4 w-4 mr-2" />
@@ -243,6 +251,7 @@ const Navbar = () => {
                         </button>
                         <button
                           onClick={handlePricingNavigation}
+                          onMouseDown={(e) => e.stopPropagation()}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
@@ -250,6 +259,7 @@ const Navbar = () => {
                         </button>
                         <button 
                           onClick={() => handleProfileNavigation('danger')}
+                          onMouseDown={(e) => e.stopPropagation()}
                           className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
@@ -258,6 +268,7 @@ const Navbar = () => {
                         <hr className="my-1" />
                         <button
                           onClick={handleSignOutClick}
+                          onMouseDown={(e) => e.stopPropagation()}
                           className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                         >
                           {t('nav.profile.logout')}
