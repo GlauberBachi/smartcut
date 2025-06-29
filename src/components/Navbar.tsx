@@ -86,17 +86,15 @@ const Navbar = () => {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
       if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
-        console.log('Clicking outside, closing menu'); // Debug log
         setShowProfileMenu(false);
       }
     };
 
-    // Only add listener when menu is open
+    // Only add listener when menu is open, with a small delay to prevent immediate closing
     if (showProfileMenu) {
-      // Use a small delay to prevent immediate closing
       const timeoutId = setTimeout(() => {
         document.addEventListener('mousedown', handleClickOutside);
-      }, 100);
+      }, 150);
       
       return () => {
         clearTimeout(timeoutId);
@@ -147,11 +145,18 @@ const Navbar = () => {
 
   const toggleProfileMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setShowProfileMenu(prev => !prev);
+    e.preventDefault();
+    
+    // Use a callback to ensure we get the latest state
+    setShowProfileMenu(prev => {
+      const newState = !prev;
+      return newState;
+    });
   };
 
   // Handle clicks inside dropdown to prevent closing
   const handleDropdownClick = (e: React.MouseEvent) => {
+    e.preventDefault();
     e.stopPropagation();
   };
 
