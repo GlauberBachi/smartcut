@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Sidebar from './components/Sidebar';
+import DeploymentMessage from './components/DeploymentMessage';
 import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
 import CutOptimizer from './pages/CutOptimizer';
@@ -33,6 +34,7 @@ const AppContent = () => {
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-br from-gray-50 to-tech-50">
+      <DeploymentMessage />
       <div className="print:hidden">
         <Navbar />
       </div>
