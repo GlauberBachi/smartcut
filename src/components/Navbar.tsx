@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { User, Camera, Key, CreditCard, ChevronDown, Bell, Menu, X, LayoutDashboard, Scissors, Trash2, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,10 +15,9 @@ const Navbar = () => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [firstName, setFirstName] = useState<string>('');
   const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
-  const profileButtonRef = useRef<HTMLButtonElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -78,73 +77,36 @@ const Navbar = () => {
     }
   }, [user]);
 
-  // Reset states when user changes
   useEffect(() => {
     setShowProfileMenu(false);
     setIsMobileMenuOpen(false);
   }, [user]);
 
-  // Handle clicks outside the dropdown
+  // Simplified click outside handler
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      
-      // Check if click is outside both the menu and the button
-      if (
-        profileMenuRef.current && 
-        !profileMenuRef.current.contains(target) &&
-        profileButtonRef.current &&
-        !profileButtonRef.current.contains(target)
-      ) {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
-    };
-
-    // Only add listener when menu is open
-    if (showProfileMenu) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
+
+    if (showProfileMenu) {
+      // Add a small delay to prevent immediate closing
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+      }, 10);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
     return email?.charAt(0).toUpperCase() || 'U';
   };
 
-  // Memoized handlers to prevent re-renders
-  const toggleProfileMenu = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setShowProfileMenu(prev => !prev);
-  }, []);
-
-  const closeProfileMenu = useCallback(() => {
-    setShowProfileMenu(false);
-  }, []);
-
-  const handleProfileNavigation = useCallback((tab: string) => {
-    closeProfileMenu();
-    setTimeout(() => {
-      navigate('/profile', { state: { activeTab: tab } });
-    }, 100);
-  }, [navigate, closeProfileMenu]);
-
-  const handleNotificationsNavigation = useCallback(() => {
-    closeProfileMenu();
-    setTimeout(() => {
-      navigate('/notifications');
-    }, 100);
-  }, [navigate, closeProfileMenu]);
-
-  const handlePricingNavigation = useCallback(() => {
-    closeProfileMenu();
-    setTimeout(() => {
-      navigate('/pricing');
-    }, 100);
-  }, [navigate, closeProfileMenu]);
-
-  const handleSignOutClick = useCallback(async () => {
-    closeProfileMenu();
+  const handleSignOut = async () => {
     try {
       await signOut();
       navigate('/');
@@ -152,16 +114,38 @@ const Navbar = () => {
       console.error('Error signing out:', error);
       navigate('/');
     }
-  }, [signOut, navigate, closeProfileMenu]);
+  };
 
-  // Menu item click handler that prevents event bubbling
-  const handleMenuItemClick = useCallback((action: () => void) => {
-    return (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      action();
-    };
-  }, []);
+  const handleProfileNavigation = (tab: string) => {
+    setShowProfileMenu(false);
+    navigate('/profile', { state: { activeTab: tab } });
+  };
+
+  const handleNotificationsNavigation = () => {
+    setShowProfileMenu(false);
+    navigate('/notifications');
+  };
+
+  const handlePricingNavigation = () => {
+    setShowProfileMenu(false);
+    navigate('/pricing');
+  };
+
+  const handleSignOutClick = async () => {
+    setShowProfileMenu(false);
+    try {
+      await signOut();
+      navigate('/');
+    } catch (error) {
+      console.error('Error signing out:', error);
+      navigate('/');
+    }
+  };
+
+  // Simple toggle function
+  const toggleDropdown = () => {
+    setShowProfileMenu(!showProfileMenu);
+  };
 
   return (
     <>
@@ -195,18 +179,14 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="relative">
+                <div className="relative" ref={dropdownRef}>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">
                       {user.email}
                     </span>
                     <button
-                      ref={profileButtonRef}
-                      onClick={toggleProfileMenu}
-                      className="flex items-center space-x-2 px-2 py-1 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-opacity-50 rounded-md"
-                      type="button"
-                      aria-expanded={showProfileMenu}
-                      aria-haspopup="true"
+                      onClick={toggleDropdown}
+                      className="flex items-center space-x-2"
                     >
                       <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                         {avatarUrl ? (
@@ -226,72 +206,60 @@ const Navbar = () => {
                           </span>
                         )}
                       </div>
-                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showProfileMenu ? 'rotate-180' : ''}`} />
+                      <ChevronDown className="h-4 w-4 text-gray-500" />
                     </button>
                   </div>
-
-                  {/* Profile dropdown menu */}
+                  
+                  {/* Profile dropdown menu - usando conditional rendering simples */}
                   {showProfileMenu && (
-                    <div 
-                      ref={profileMenuRef}
-                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50 animate-in fade-in-0 zoom-in-95 duration-100"
-                      role="menu"
-                      aria-orientation="vertical"
-                    >
-                      <div className="py-1" role="none">
+                    <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                      <div className="py-1">
                         <button
-                          onClick={handleMenuItemClick(() => handleProfileNavigation('personal'))}
-                          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                          role="menuitem"
+                          onClick={() => handleProfileNavigation('personal')}
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <User className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.personalInfo')}</span>
                         </button>
                         <button
-                          onClick={handleMenuItemClick(() => handleProfileNavigation('avatar'))}
-                          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                          role="menuitem"
+                          onClick={() => handleProfileNavigation('avatar')}
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Camera className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.avatar')}</span>
                         </button>
                         <button
-                          onClick={handleMenuItemClick(handleNotificationsNavigation)}
-                          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                          role="menuitem"
+                          onClick={handleNotificationsNavigation}
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.notifications')}</span>
                         </button>
                         <button
-                          onClick={handleMenuItemClick(() => handleProfileNavigation('password'))}
-                          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                          role="menuitem"
+                          onClick={() => handleProfileNavigation('password')}
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Key className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.password')}</span>
                         </button>
                         <button
-                          onClick={handleMenuItemClick(handlePricingNavigation)}
-                          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                          role="menuitem"
+                          onClick={handlePricingNavigation}
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           <span>Assinaturas</span>
                         </button>
                         <button 
-                          onClick={handleMenuItemClick(() => handleProfileNavigation('danger'))}
-                          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-150"
-                          role="menuitem"
+                          onClick={() => handleProfileNavigation('danger')}
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           <span>Excluir conta</span>
                         </button>
                         <hr className="my-1" />
                         <button
-                          onClick={handleMenuItemClick(handleSignOutClick)}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors duration-150"
-                          role="menuitem"
+                          onClick={handleSignOutClick}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                         >
                           {t('nav.profile.logout')}
                         </button>
