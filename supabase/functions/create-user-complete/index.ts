@@ -47,6 +47,42 @@ async function logStripeEvent(
   }
 }
 
+async function waitForUserData(supabaseClient: any, userId: string, retries = 20, delay = 1000): Promise<any> {
+  for (let i = 0; i < retries; i++) {
+    console.log(`Attempt ${i + 1}: Checking for user data...`);
+    
+    try {
+      // Check if auth user exists
+      const { data: authUser, error: authError } = await supabaseClient.auth.admin.getUserById(userId);
+      
+      if (authError || !authUser?.user) {
+        console.log(`Attempt ${i + 1}: Auth user not found yet -`, authError?.message || 'User not found');
+        if (i < retries - 1) {
+          await new Promise(resolve => setTimeout(resolve, delay));
+          delay = Math.min(delay * 1.1, 5000); // Gradual backoff, max 5 seconds
+          continue;
+        }
+        return { data: null, error: new Error('Auth user not found after retries') };
+      }
+
+      console.log('Auth user found:', authUser.user.email);
+      return { data: authUser.user, error: null };
+      
+    } catch (error) {
+      console.log(`Attempt ${i + 1} error:`, error.message);
+      if (i < retries - 1) {
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay = Math.min(delay * 1.1, 5000);
+        continue;
+      }
+      return { data: null, error };
+    }
+  }
+
+  console.log('Failed to find user data after all attempts');
+  return { data: null, error: new Error('User data not found after multiple attempts') };
+}
+
 Deno.serve(async (req) => {
   try {
     if (req.method === 'OPTIONS') {
@@ -80,6 +116,16 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Parse request body
+    let requestBody: any = {};
+    try {
+      requestBody = await req.json();
+    } catch (e) {
+      // Body is optional
+    }
+
+    const forceRecreate = requestBody.force_recreate || false;
+
     // Create Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -108,13 +154,31 @@ Deno.serve(async (req) => {
 
     console.log('Got user:', user.id, 'email:', user.email);
 
+    // Wait for auth user to be fully available
+    const { data: authUserData, error: authUserError } = await waitForUserData(supabaseAdmin, user.id);
+    
+    if (authUserError || !authUserData) {
+      console.error('Auth user not available after retries:', authUserError);
+      await logStripeEvent(supabaseAdmin, user.id, null, 'auth_user_not_found', null, null, authUserError);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Auth user not available',
+          details: authUserError?.message 
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 404
+        }
+      );
+    }
+
     // Step 1: Create all local database records
     console.log('Creating local database records...');
     const { data: createResult, error: createError } = await supabaseAdmin
       .rpc('create_user_complete', {
         p_user_id: user.id,
         p_email: user.email,
-        p_force_recreate: false
+        p_force_recreate: forceRecreate
       });
 
     if (createError) {

@@ -52,12 +52,12 @@ const getReadableErrorMessage = (error: AuthError): string => {
   return error.message;
 };
 
-const createUserComplete = async (accessToken: string) => {
-  const maxRetries = 5;
+const ensureUserComplete = async (accessToken: string, userId: string) => {
+  const maxRetries = 10;
   let retryCount = 0;
-  let delay = 5000; // Start with 5 seconds
+  let delay = 2000; // Start with 2 seconds
   
-  console.log('Starting createUserComplete with token');
+  console.log('Starting ensureUserComplete for user:', userId);
 
   while (retryCount < maxRetries) {
     try {
@@ -69,20 +69,24 @@ const createUserComplete = async (accessToken: string) => {
         await new Promise(resolve => setTimeout(resolve, delay));
         if (retryCount < maxRetries - 1) {
           retryCount++;
-          delay = Math.min(delay * 1.5, 30000); // Max 30 seconds
+          delay = Math.min(delay * 1.2, 15000); // Max 15 seconds
           continue;
         }
         throw new Error('No valid session available after retries');
       }
 
-      console.log('Making request to create-user-complete Edge Function');
+      console.log('Making request to create-user-complete Edge Function, attempt:', retryCount + 1);
 
       const response = await fetch(`${supabaseUrl}/functions/v1/create-user-complete`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json'
-        }
+        },
+        body: JSON.stringify({
+          user_id: userId,
+          force_recreate: retryCount > 5 // Force recreate after 5 attempts
+        })
       });
 
       if (!response.ok) {
@@ -94,12 +98,12 @@ const createUserComplete = async (accessToken: string) => {
           throw new Error('Invalid or expired token. Please sign in again.');
         }
         
-        // If it's a 500 error, retry
-        if (response.status >= 500 && retryCount < maxRetries - 1) {
-          console.log(`Server error, retrying in ${delay}ms...`);
+        // If it's a 500 error or timeout, retry
+        if ((response.status >= 500 || response.status === 408) && retryCount < maxRetries - 1) {
+          console.log(`Server error (${response.status}), retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
           retryCount++;
-          delay = Math.min(delay * 1.5, 30000);
+          delay = Math.min(delay * 1.2, 15000);
           continue;
         }
         
@@ -108,10 +112,37 @@ const createUserComplete = async (accessToken: string) => {
 
       const result = await response.json();
       console.log('User creation successful:', result);
+      
+      // Verify the user was actually created by checking the database
+      if (result.success) {
+        // Wait a bit for database consistency
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Check if user exists in our database
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id, email')
+          .eq('id', userId)
+          .maybeSingle();
+        
+        if (userData) {
+          console.log('User verified in database:', userData);
+          return result;
+        } else {
+          console.log('User not found in database, retrying...');
+          if (retryCount < maxRetries - 1) {
+            retryCount++;
+            delay = Math.min(delay * 1.2, 15000);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            continue;
+          }
+        }
+      }
+      
       return result;
 
     } catch (error) {
-      console.error('Error in createUserComplete:', error);
+      console.error('Error in ensureUserComplete:', error);
       
       // If error is related to authentication, don't retry
       if (error instanceof Error && 
@@ -121,9 +152,9 @@ const createUserComplete = async (accessToken: string) => {
       }
       
       if (error instanceof Error && retryCount < maxRetries - 1) {
-        console.log(`Retrying createUserComplete in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
+        console.log(`Retrying ensureUserComplete in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
         retryCount++;
-        delay = Math.min(delay * 1.5, 30000);
+        delay = Math.min(delay * 1.2, 15000);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
@@ -148,16 +179,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
-      // If we have a new user (signup or signin), create complete user record
-      if (session?.access_token && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
-        // Add delay to ensure auth user is fully created
+      // If we have a new user (signup or signin), ensure complete user record
+      if (session?.access_token && currentUser && 
+          (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        
+        // Add progressive delay based on event type
+        const delay = event === 'SIGNED_IN' ? 3000 : 1000;
+        
         setTimeout(async () => {
           try {
-            await createUserComplete(session.access_token);
+            console.log('Ensuring complete user record for:', currentUser.id);
+            await ensureUserComplete(session.access_token, currentUser.id);
           } catch (error) {
-            console.error('Error creating complete user record:', error);
+            console.error('Error ensuring complete user record:', error);
+            // Don't show error to user for this background operation
           }
-        }, 3000); // 3 second delay
+        }, delay);
       }
       
       setLoading(false);
