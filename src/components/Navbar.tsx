@@ -156,13 +156,14 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="flex items-center space-x-2 relative" ref={profileMenuRef}>
+                <div className="relative" ref={profileMenuRef}>
+                  <div className="flex items-center space-x-2">
                   <span className="text-sm font-medium text-gray-700">
                     {user.email}
                   </span>
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center space-x-2 focus:outline-none"
+                    className="flex items-center space-x-2"
                   >
                     <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                       {avatarUrl ? (
@@ -184,9 +185,10 @@ const Navbar = () => {
                     </div>
                     <ChevronDown className="h-4 w-4 text-gray-500" />
                   </button>
+                  </div>
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
+                    <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
