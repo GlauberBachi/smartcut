@@ -7,10 +7,20 @@ const PRICES = {
   yearly: 'price_1RICWFGMh07VKLbnLsU1jkVZ'
 } as const;
 
-const stripeKey = Deno.env.get('STRIPE_SECRET_KEY')?.trim();
+// Get and validate Stripe key
+const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
 if (!stripeKey) {
+  console.error('STRIPE_SECRET_KEY environment variable is not set');
   throw new Error('Missing STRIPE_SECRET_KEY');
 }
+
+// Validate key format
+if (!stripeKey.startsWith('sk_')) {
+  console.error('Invalid Stripe key format. Key should start with sk_');
+  throw new Error('Invalid STRIPE_SECRET_KEY format');
+}
+
+console.log('Stripe key loaded, length:', stripeKey.length, 'prefix:', stripeKey.substring(0, 7));
 
 const stripe = new Stripe(stripeKey, {
   apiVersion: '2023-10-16',
@@ -90,6 +100,7 @@ Deno.serve(async (req) => {
     }
     
     console.log('Starting create-user-complete function');
+    console.log('Environment check - Stripe key present:', !!stripeKey);
 
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
@@ -238,6 +249,7 @@ Deno.serve(async (req) => {
 
     // Step 3: Create real Stripe customer
     console.log('Creating real Stripe customer...');
+    console.log('Using Stripe key prefix:', stripeKey.substring(0, 7));
     
     const customerData = {
       email: user.email,
@@ -250,85 +262,106 @@ Deno.serve(async (req) => {
 
     await logStripeEvent(supabaseAdmin, user.id, null, 'create_customer_request', customerData);
 
-    const customer = await stripe.customers.create(customerData);
+    try {
+      const customer = await stripe.customers.create(customerData);
 
-    await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_customer_response', null, customer);
+      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_customer_response', null, customer);
 
-    console.log('Created Stripe customer:', customer.id);
+      console.log('Created Stripe customer:', customer.id);
 
-    // Step 4: Create free subscription
-    const subscription = await stripe.subscriptions.create({
-      customer: customer.id,
-      items: [{ 
-        price: PRICES.free,
-        quantity: 1
-      }],
-      trial_period_days: 36500, // 100 years trial for free plan
-      metadata: {
-        userId: user.id,
-        plan: 'free'
+      // Step 4: Create free subscription
+      const subscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{ 
+          price: PRICES.free,
+          quantity: 1
+        }],
+        trial_period_days: 36500, // 100 years trial for free plan
+        metadata: {
+          userId: user.id,
+          plan: 'free'
+        }
+      });
+
+      console.log('Created free subscription:', subscription.id);
+      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_subscription_response', null, subscription);
+
+      // Step 5: Update database with real Stripe IDs
+      const { error: customerUpdateError } = await supabaseAdmin
+        .from('stripe_customers')
+        .update({
+          customer_id: customer.id,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id);
+
+      if (customerUpdateError) {
+        console.error('Error updating customer record:', customerUpdateError);
+        await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_customer_update_error', null, null, customerUpdateError);
+        
+        // Try to cleanup Stripe resources
+        try {
+          await stripe.subscriptions.cancel(subscription.id);
+          await stripe.customers.del(customer.id);
+        } catch (cleanupError) {
+          console.error('Error cleaning up Stripe resources:', cleanupError);
+        }
+        
+        throw customerUpdateError;
       }
-    });
 
-    console.log('Created free subscription:', subscription.id);
-    await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_subscription_response', null, subscription);
+      const { error: subscriptionUpdateError } = await supabaseAdmin
+        .from('stripe_subscriptions')
+        .update({
+          subscription_id: subscription.id,
+          price_id: PRICES.free,
+          status: 'active',
+          current_period_start: subscription.current_period_start,
+          current_period_end: subscription.current_period_end,
+          cancel_at_period_end: false,
+          updated_at: new Date().toISOString()
+        })
+        .eq('customer_id', customer.id);
 
-    // Step 5: Update database with real Stripe IDs
-    const { error: customerUpdateError } = await supabaseAdmin
-      .from('stripe_customers')
-      .update({
-        customer_id: customer.id,
-        updated_at: new Date().toISOString()
-      })
-      .eq('user_id', user.id);
+      if (subscriptionUpdateError) {
+        console.error('Error updating subscription record:', subscriptionUpdateError);
+        await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_subscription_update_error', null, null, subscriptionUpdateError);
+      }
 
-    if (customerUpdateError) {
-      console.error('Error updating customer record:', customerUpdateError);
-      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_customer_update_error', null, null, customerUpdateError);
+      console.log('Successfully created complete user with Stripe integration');
+
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          customerId: customer.id,
+          subscriptionId: subscription.id,
+          message: 'User created successfully with Stripe integration'
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+
+    } catch (stripeError: any) {
+      console.error('Stripe API Error:', stripeError);
+      await logStripeEvent(supabaseAdmin, user.id, null, 'stripe_api_error', customerData, null, stripeError);
       
-      // Try to cleanup Stripe resources
-      try {
-        await stripe.subscriptions.cancel(subscription.id);
-        await stripe.customers.del(customer.id);
-      } catch (cleanupError) {
-        console.error('Error cleaning up Stripe resources:', cleanupError);
-      }
-      
-      throw customerUpdateError;
+      // Return detailed error information
+      return new Response(
+        JSON.stringify({
+          error: 'Stripe API Error',
+          details: stripeError.message,
+          type: stripeError.type,
+          code: stripeError.code,
+          success: false
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
     }
-
-    const { error: subscriptionUpdateError } = await supabaseAdmin
-      .from('stripe_subscriptions')
-      .update({
-        subscription_id: subscription.id,
-        price_id: PRICES.free,
-        status: 'active',
-        current_period_start: subscription.current_period_start,
-        current_period_end: subscription.current_period_end,
-        cancel_at_period_end: false,
-        updated_at: new Date().toISOString()
-      })
-      .eq('customer_id', customer.id);
-
-    if (subscriptionUpdateError) {
-      console.error('Error updating subscription record:', subscriptionUpdateError);
-      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_subscription_update_error', null, null, subscriptionUpdateError);
-    }
-
-    console.log('Successfully created complete user with Stripe integration');
-
-    return new Response(
-      JSON.stringify({ 
-        success: true,
-        customerId: customer.id,
-        subscriptionId: subscription.id,
-        message: 'User created successfully with Stripe integration'
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      }
-    );
 
   } catch (error) {
     console.error('Error:', error);
