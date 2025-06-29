@@ -18,6 +18,7 @@ const Navbar = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -82,24 +83,36 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   }, [user]);
 
-  // Abordagem mais simples para click outside
+  // Implementação mais robusta para click outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleClickOutside = (event: Event) => {
+      const target = event.target as Node;
+      
+      // Verifica se o clique foi fora do dropdown E fora do botão
+      if (
+        dropdownRef.current && 
+        !dropdownRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
         setShowProfileMenu(false);
       }
     };
 
-    // Só adiciona o listener se o menu estiver aberto
-    if (showProfileMenu) {
-      // Pequeno delay para evitar fechamento imediato
-      const timer = setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 50);
+    const handleEscapeKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowProfileMenu(false);
+      }
+    };
 
+    if (showProfileMenu) {
+      // Usar capture para garantir que o evento seja capturado
+      document.addEventListener('click', handleClickOutside, true);
+      document.addEventListener('keydown', handleEscapeKey);
+      
       return () => {
-        clearTimeout(timer);
-        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('click', handleClickOutside, true);
+        document.removeEventListener('keydown', handleEscapeKey);
       };
     }
   }, [showProfileMenu]);
@@ -144,9 +157,16 @@ const Navbar = () => {
     }
   };
 
-  // Função simples para toggle do menu
-  const toggleProfileMenu = () => {
+  // Função para toggle do menu com prevenção de propagação
+  const toggleProfileMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
     setShowProfileMenu(prev => !prev);
+  };
+
+  // Função para prevenir fechamento quando clica dentro do menu
+  const handleMenuClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   return (
@@ -181,15 +201,18 @@ const Navbar = () => {
             <div className="flex items-center space-x-4">
               <LanguageSwitcher />
               {user ? (
-                <div className="relative" ref={dropdownRef}>
+                <div className="relative">
                   <div className="flex items-center space-x-2">
                     <span className="text-sm font-medium text-gray-700">
                       {user.email}
                     </span>
                     <button
+                      ref={buttonRef}
                       onClick={toggleProfileMenu}
-                      className="flex items-center space-x-2 p-1 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                      className="flex items-center space-x-2 p-2 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-colors duration-200"
                       type="button"
+                      aria-expanded={showProfileMenu}
+                      aria-haspopup="true"
                     >
                       <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                         {avatarUrl ? (
@@ -215,46 +238,50 @@ const Navbar = () => {
                   
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50">
+                    <div 
+                      ref={dropdownRef}
+                      className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
+                      onClick={handleMenuClick}
+                    >
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                         >
                           <User className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.personalInfo')}</span>
                         </button>
                         <button
                           onClick={() => handleProfileNavigation('avatar')}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                         >
                           <Camera className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.avatar')}</span>
                         </button>
                         <button
                           onClick={handleNotificationsNavigation}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                         >
                           <Bell className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.notifications')}</span>
                         </button>
                         <button
                           onClick={() => handleProfileNavigation('password')}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                         >
                           <Key className="h-4 w-4 mr-2" />
                           <span>{t('nav.profile.password')}</span>
                         </button>
                         <button
                           onClick={handlePricingNavigation}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
                           <span>Assinaturas</span>
                         </button>
                         <button 
                           onClick={() => handleProfileNavigation('danger')}
-                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors duration-200"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
                           <span>Excluir conta</span>
@@ -262,7 +289,7 @@ const Navbar = () => {
                         <hr className="my-1" />
                         <button
                           onClick={handleSignOutClick}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100 transition-colors duration-200"
                         >
                           {t('nav.profile.logout')}
                         </button>
