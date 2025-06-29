@@ -121,24 +121,17 @@ const Navbar = () => {
 
   const handleProfileNavigation = (tab: string) => {
     setShowProfileMenu(false);
-    // Use setTimeout to ensure state update happens first
-    setTimeout(() => {
-      navigate('/profile', { state: { activeTab: tab } });
-    }, 0);
+    navigate('/profile', { state: { activeTab: tab } });
   };
 
   const handleNotificationsNavigation = () => {
     setShowProfileMenu(false);
-    setTimeout(() => {
-      navigate('/notifications');
-    }, 0);
+    navigate('/notifications');
   };
 
   const handlePricingNavigation = () => {
     setShowProfileMenu(false);
-    setTimeout(() => {
-      navigate('/pricing');
-    }, 0);
+    navigate('/pricing');
   };
 
   const handleSignOutClick = async () => {
@@ -153,12 +146,15 @@ const Navbar = () => {
   };
 
   const toggleProfileMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation();
-    const newState = !showProfileMenu;
-    setShowProfileMenu(newState);
-    console.log('Toggle profile menu:', newState); // Debug log
+    setShowProfileMenu(prev => !prev);
   };
+
+  // Handle clicks inside dropdown to prevent closing
+  const handleDropdownClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
@@ -224,7 +220,7 @@ const Navbar = () => {
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
                     <div 
-                      className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50"
+                      className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60]"
                       onClick={handleDropdownClick}
                     >
                       <div className="py-1">
@@ -335,10 +331,5 @@ const Navbar = () => {
     </>
   );
 };
-
-  // Prevent dropdown from closing when clicking inside it
-  const handleDropdownClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-  };
 
 export default Navbar;
