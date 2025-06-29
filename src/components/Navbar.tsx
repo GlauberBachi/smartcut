@@ -134,6 +134,9 @@ const Navbar = () => {
     e.stopPropagation();
   };
 
+  const handleMenuItemClick = () => {
+    setShowProfileMenu(false);
+  };
   return (
     <>
       <nav className="bg-white shadow-lg bg-opacity-80 backdrop-blur-sm relative z-50">
@@ -216,7 +219,7 @@ const Navbar = () => {
                         </button>
                         <Link
                           to="/notifications"
-                          onClick={() => setShowProfileMenu(false)}
+                          onClick={handleMenuItemClick}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
                         >
                           <Bell className="h-4 w-4 mr-2" />
@@ -238,7 +241,7 @@ const Navbar = () => {
                         </button>
                         <button 
                           onClick={() => {
-                            setShowProfileMenu(false);
+                            handleMenuItemClick();
                             navigate('/profile', { state: { activeTab: 'danger' } });
                           }}
                           className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
