@@ -84,23 +84,13 @@ const Navbar = () => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (profileMenuRef.current && !profileMenuRef.current.contains(target)) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
         setShowProfileMenu(false);
       }
     };
 
-    // Only add listener when menu is open, with a small delay to prevent immediate closing
-    if (showProfileMenu) {
-      const timeoutId = setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-      }, 150);
-      
-      return () => {
-        clearTimeout(timeoutId);
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [showProfileMenu]);
 
   const getInitials = (email: string) => {
@@ -119,17 +109,24 @@ const Navbar = () => {
 
   const handleProfileNavigation = (tab: string) => {
     setShowProfileMenu(false);
-    navigate('/profile', { state: { activeTab: tab } });
+    // Use setTimeout to ensure state update happens first
+    setTimeout(() => {
+      navigate('/profile', { state: { activeTab: tab } });
+    }, 0);
   };
 
   const handleNotificationsNavigation = () => {
     setShowProfileMenu(false);
-    navigate('/notifications');
+    setTimeout(() => {
+      navigate('/notifications');
+    }, 0);
   };
 
   const handlePricingNavigation = () => {
     setShowProfileMenu(false);
-    navigate('/pricing');
+    setTimeout(() => {
+      navigate('/pricing');
+    }, 0);
   };
 
   const handleSignOutClick = async () => {
@@ -144,21 +141,9 @@ const Navbar = () => {
   };
 
   const toggleProfileMenu = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    
-    // Use a callback to ensure we get the latest state
-    setShowProfileMenu(prev => {
-      const newState = !prev;
-      return newState;
-    });
+    setShowProfileMenu(!showProfileMenu);
   };
 
-  // Handle clicks inside dropdown to prevent closing
-  const handleDropdownClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  };
 
   return (
     <>
@@ -225,56 +210,55 @@ const Navbar = () => {
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
                     <div 
-                      className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[60]"
-                      onClick={handleDropdownClick}
+                      className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg ring-1 ring-black ring-opacity-5 z-50"
                     >
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
-                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <User className="h-4 w-4 mr-2" />
-                          {t('nav.profile.personalInfo')}
+                          <span>{t('nav.profile.personalInfo')}</span>
                         </button>
                         <button
                           onClick={() => handleProfileNavigation('avatar')}
-                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Camera className="h-4 w-4 mr-2" />
-                          {t('nav.profile.avatar')}
+                          <span>{t('nav.profile.avatar')}</span>
                         </button>
                         <button
                           onClick={handleNotificationsNavigation}
-                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Bell className="h-4 w-4 mr-2" />
-                          {t('nav.profile.notifications')}
+                          <span>{t('nav.profile.notifications')}</span>
                         </button>
                         <button
                           onClick={() => handleProfileNavigation('password')}
-                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Key className="h-4 w-4 mr-2" />
-                          {t('nav.profile.password')}
+                          <span>{t('nav.profile.password')}</span>
                         </button>
                         <button
                           onClick={handlePricingNavigation}
-                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <CreditCard className="h-4 w-4 mr-2" />
-                          Assinaturas
+                          <span>Assinaturas</span>
                         </button>
                         <button 
                           onClick={() => handleProfileNavigation('danger')}
-                          className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-gray-100 flex items-center"
+                          className="flex items-center space-x-2 w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir conta
+                          <span>Excluir conta</span>
                         </button>
                         <hr className="my-1" />
                         <button
                           onClick={handleSignOutClick}
-                          className="w-full text-left px-4 py-3 text-sm text-red-600 hover:bg-gray-100"
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                         >
                           {t('nav.profile.logout')}
                         </button>
