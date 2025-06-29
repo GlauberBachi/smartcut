@@ -29,7 +29,6 @@ const Navbar = () => {
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -163,7 +162,7 @@ const Navbar = () => {
                   </span>
                   <button
                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="flex items-center space-x-2"
+                    className="flex items-center space-x-2 focus:outline-none"
                   >
                     <div className="h-8 w-8 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
                       {avatarUrl ? (
@@ -187,7 +186,7 @@ const Navbar = () => {
                   </button>
                   {/* Profile dropdown menu */}
                   {showProfileMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-[100]">
+                    <div className="absolute right-0 top-full mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                       <div className="py-1">
                         <button
                           onClick={() => handleProfileNavigation('personal')}
