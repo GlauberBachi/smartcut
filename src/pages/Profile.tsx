@@ -26,10 +26,8 @@ const Profile = () => {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Tab state - simplified
-  const [activeTab, setActiveTab] = useState(() => {
-    return location.state?.activeTab || 'personal';
-  });
+  // Estado das abas - simplificado e mais direto
+  const [activeTab, setActiveTab] = useState('personal');
   
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
@@ -51,12 +49,16 @@ const Profile = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Clear location state after reading it
+  // Verificar se há uma aba específica na URL
   useEffect(() => {
-    if (location.state?.activeTab) {
-      window.history.replaceState({}, document.title);
+    const urlParams = new URLSearchParams(location.search);
+    const tab = urlParams.get('tab');
+    if (tab && ['personal', 'avatar', 'password', 'subscription', 'danger'].includes(tab)) {
+      setActiveTab(tab);
+    } else if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
     }
-  }, [location.state]);
+  }, [location]);
 
   useEffect(() => {
     if (!user) {
@@ -128,9 +130,15 @@ const Profile = () => {
   };
 
   const handleTabChange = (tab: string) => {
+    console.log('Changing tab to:', tab); // Debug log
     setActiveTab(tab);
     setError('');
     setSuccess('');
+    
+    // Atualizar URL sem recarregar a página
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('tab', tab);
+    window.history.pushState({}, '', newUrl.toString());
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -327,6 +335,15 @@ const Profile = () => {
     );
   }
 
+  // Definir as abas disponíveis
+  const tabs = [
+    { id: 'personal', label: 'Informações Pessoais', icon: User },
+    { id: 'avatar', label: 'Foto de Perfil', icon: Camera },
+    { id: 'password', label: 'Alterar Senha', icon: Key },
+    { id: 'subscription', label: 'Assinatura', icon: CreditCard },
+    { id: 'danger', label: 'Excluir Conta', icon: Trash2 },
+  ];
+
   return (
     <div className="py-8 px-4">
       {error && (
@@ -345,13 +362,7 @@ const Profile = () => {
           {/* Tab Navigation */}
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
-              {[
-                { id: 'personal', label: 'Informações Pessoais', icon: User },
-                { id: 'avatar', label: 'Foto de Perfil', icon: Camera },
-                { id: 'password', label: 'Alterar Senha', icon: Key },
-                { id: 'subscription', label: 'Assinatura', icon: CreditCard },
-                { id: 'danger', label: 'Excluir Conta', icon: Trash2 },
-              ].map((tab) => (
+              {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => handleTabChange(tab.id)}
@@ -372,6 +383,11 @@ const Profile = () => {
 
           {/* Tab Content */}
           <div className="p-6">
+            {/* Debug info */}
+            <div className="mb-4 text-xs text-gray-400">
+              Aba ativa: {activeTab}
+            </div>
+
             {/* Personal Information Tab */}
             {activeTab === 'personal' && (
               <div>
