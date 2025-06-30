@@ -110,6 +110,8 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
     closeDropdown();
     // Navegar diretamente com query parameter
     navigate(`/profile?tab=${tab}`);
+  }, [navigate, closeDropdown]);
+
   const handleNotificationsNavigation = useCallback(() => {
     closeDropdown();
     setTimeout(() => {
