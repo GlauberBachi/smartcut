@@ -8,7 +8,10 @@ import Dashboard from './pages/Dashboard';
 import CutOptimizer from './pages/CutOptimizer';
 import Pricing from './pages/Pricing';
 import Notifications from './pages/Notifications';
-import Profile from './pages/Profile';
+import PersonalInfo from './pages/PersonalInfo';
+import Avatar from './pages/Avatar';
+import ChangePassword from './pages/ChangePassword';
+import DeleteAccount from './pages/DeleteAccount';
 import Admin from './pages/Admin';
 import Success from './pages/Success';
 import Footer from './components/Footer';
@@ -59,9 +62,24 @@ const AppContent = () => {
                 <Notifications />
               </PrivateRoute>
             } />
-            <Route path="/profile" element={
+            <Route path="/personal-info" element={
               <PrivateRoute>
-                <Profile />
+                <PersonalInfo />
+              </PrivateRoute>
+            } />
+            <Route path="/avatar" element={
+              <PrivateRoute>
+                <Avatar />
+              </PrivateRoute>
+            } />
+            <Route path="/change-password" element={
+              <PrivateRoute>
+                <ChangePassword />
+              </PrivateRoute>
+            } />
+            <Route path="/delete-account" element={
+              <PrivateRoute>
+                <DeleteAccount />
               </PrivateRoute>
             } />
             <Route path="/success" element={<Success />} />
