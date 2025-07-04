@@ -160,7 +160,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
           <span>{t('nav.profile.personalInfo')}</span>
         </button>
         <button
-          onClick={() => handleProfileNavigation('avatar')}
+          onClick={() => navigate('/profile')}
           className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
         >
           <Camera className="h-4 w-4 mr-2" />
@@ -174,7 +174,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
           <span>{t('nav.profile.notifications')}</span>
         </button>
         <button
-          onClick={() => handleProfileNavigation('password')}
+          onClick={() => navigate('/profile')}
           className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
         >
           <Key className="h-4 w-4 mr-2" />
@@ -188,7 +188,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
           <span>Assinaturas</span>
         </button>
         <button 
-          onClick={() => handleProfileNavigation('danger')}
+          onClick={() => navigate('/profile')}
           className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
         >
           <Trash2 className="h-4 w-4 mr-2" />
