@@ -107,12 +107,14 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
 
   // Funções de navegação
   const handleProfileNavigation = useCallback((tab: string) => {
+    console.log('ProfileDropdown: Navigating to profile tab:', tab);
     closeDropdown();
     // Navegar diretamente com query parameter
     navigate(`/profile?tab=${tab}`);
   }, [navigate, closeDropdown]);
 
   const handleNotificationsNavigation = useCallback(() => {
+    console.log('ProfileDropdown: Navigating to notifications');
     closeDropdown();
     setTimeout(() => {
       navigate('/notifications');
@@ -120,6 +122,7 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
   }, [navigate, closeDropdown]);
 
   const handlePricingNavigation = useCallback(() => {
+    console.log('ProfileDropdown: Navigating to pricing');
     closeDropdown();
     setTimeout(() => {
       navigate('/pricing');

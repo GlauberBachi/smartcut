@@ -21,6 +21,7 @@ const Notifications = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    console.log('Notifications component mounted');
     if (!user) return;
     loadNotifications();
   }, [user]);
@@ -28,6 +29,7 @@ const Notifications = () => {
   const loadNotifications = async () => {
     try {
       setLoading(true);
+      console.log('Loading notifications for user:', user?.email);
       const { data, error } = await supabase
         .from('notifications')
         .select(`
@@ -45,6 +47,7 @@ const Notifications = () => {
 
       if (error) throw error;
 
+      console.log('Notifications loaded:', data);
       const formattedNotifications = (data || []).map(n => ({
         id: n.id,
         title: n.title,

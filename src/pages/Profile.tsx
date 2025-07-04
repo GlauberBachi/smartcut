@@ -51,27 +51,34 @@ const Profile = () => {
 
   // Verificar se há uma aba específica na URL
   useEffect(() => {
+    console.log('Profile component mounted, location:', location);
     const urlParams = new URLSearchParams(location.search);
     const tab = urlParams.get('tab');
+    console.log('Tab from URL:', tab);
     if (tab && ['personal', 'avatar', 'password', 'subscription', 'danger'].includes(tab)) {
       setActiveTab(tab);
+      console.log('Setting active tab to:', tab);
     } else if (location.state?.activeTab) {
       setActiveTab(location.state.activeTab);
+      console.log('Setting active tab from state to:', location.state.activeTab);
     }
   }, [location]);
 
   useEffect(() => {
     if (!user) {
+      console.log('No user found, redirecting to home');
       navigate('/');
       return;
     }
     
+    console.log('User found, loading data for:', user.email);
     loadAllData();
   }, [user, navigate]);
 
   const loadAllData = async () => {
     try {
       setIsLoading(true);
+      console.log('Loading profile data...');
       
       // Load profile data
       const { data: profileData, error: profileError } = await supabase
@@ -81,6 +88,7 @@ const Profile = () => {
         .maybeSingle();
 
       if (profileError) throw profileError;
+      console.log('Profile data loaded:', profileData);
       
       if (profileData) {
         const nameParts = (profileData.full_name || '').split(' ');
@@ -96,6 +104,7 @@ const Profile = () => {
       }
 
       // Load subscription data
+      console.log('Loading subscription data...');
       const { data: subData, error: subError } = await supabase
         .from('subscriptions')
         .select('*')
@@ -104,6 +113,7 @@ const Profile = () => {
         .maybeSingle();
 
       if (subError) throw subError;
+      console.log('Subscription data loaded:', subData);
       
       if (subData) {
         setSubscription(subData);
@@ -120,6 +130,8 @@ const Profile = () => {
       if (user.user_metadata?.avatar_url) {
         setAvatarUrl(user.user_metadata.avatar_url);
       }
+      
+      console.log('All data loaded successfully');
       
     } catch (error: any) {
       console.error('Error loading data:', error);

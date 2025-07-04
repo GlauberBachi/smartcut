@@ -54,14 +54,11 @@ const AppContent = () => {
               </PrivateRoute>
             } />
             <Route path="/pricing" element={<Pricing />} />
-            <Route path="/success" element={<Success />} />
-            <Route path="/pricing" element={<Pricing />} />
             <Route path="/notifications" element={
               <PrivateRoute>
                 <Notifications />
               </PrivateRoute>
             } />
-            <Route path="/success" element={<Success />} />
             <Route path="/profile" element={
               <PrivateRoute>
                 <Profile />

@@ -25,12 +25,15 @@ const Pricing = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('Pricing component mounted');
     const loadUserPlan = async () => {
       if (!user) {
+        console.log('No user found in Pricing component');
         setLoading(false);
         return;
       }
 
+      console.log('Loading user plan for:', user.email);
       try {
         // Get subscription data from the subscriptions table
         const { data: subscription, error: subscriptionError } = await supabase
@@ -45,6 +48,7 @@ const Pricing = () => {
           return;
         }
 
+        console.log('Current plan loaded:', subscription?.plan || 'free');
         setCurrentPlan(subscription?.plan || 'free');
       } catch (error) {
         console.error('Error loading subscription:', error);
@@ -57,6 +61,7 @@ const Pricing = () => {
   }, [user]);
 
   if (loading) {
+    console.log('Pricing component is loading...');
     return (
       <div className="bg-gray-50 py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -79,6 +84,7 @@ const Pricing = () => {
     navigate('/?auth=signin');
   };
 
+  console.log('Rendering Pricing component with user:', user?.email, 'plan:', currentPlan);
   return (
     <div className="bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
