@@ -160,6 +160,13 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
           <span>{t('nav.profile.personalInfo')}</span>
         </button>
         <button
+          onClick={() => handleProfileNavigation('avatar')}
+          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
+        >
+          <Camera className="h-4 w-4 mr-2" />
+          <span>{t('nav.profile.avatar')}</span>
+        </button>
+        <button
           onClick={handleNotificationsNavigation}
           className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
         >
