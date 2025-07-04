@@ -160,13 +160,6 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
           <span>{t('nav.profile.personalInfo')}</span>
         </button>
         <button
-          onClick={() => handleProfileNavigation('avatar')}
-          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
-        >
-          <Camera className="h-4 w-4 mr-2" />
-          <span>{t('nav.profile.avatar')}</span>
-        </button>
-        <button
           onClick={handleNotificationsNavigation}
           className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
         >
@@ -174,25 +167,11 @@ const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ user, avatarUrl }) =>
           <span>{t('nav.profile.notifications')}</span>
         </button>
         <button
-          onClick={() => handleProfileNavigation('password')}
-          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
-        >
-          <Key className="h-4 w-4 mr-2" />
-          <span>{t('nav.profile.password')}</span>
-        </button>
-        <button
           onClick={handlePricingNavigation}
           className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
         >
           <CreditCard className="h-4 w-4 mr-2" />
           <span>Assinaturas</span>
-        </button>
-        <button 
-          onClick={() => handleProfileNavigation('danger')}
-          className="flex items-center w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 transition-colors"
-        >
-          <Trash2 className="h-4 w-4 mr-2" />
-          <span>Excluir conta</span>
         </button>
         <hr className="my-1" />
         <button
