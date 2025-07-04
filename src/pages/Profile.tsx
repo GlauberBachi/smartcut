@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
 import { format, isValid, parseISO } from 'date-fns';
@@ -24,10 +24,6 @@ interface Subscription {
 const Profile = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // Estado das abas - simplificado e mais direto
-  const [activeTab, setActiveTab] = useState('personal');
   
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
@@ -48,21 +44,6 @@ const Profile = () => {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  // Verificar se há uma aba específica na URL
-  useEffect(() => {
-    console.log('Profile component mounted, location:', location);
-    const urlParams = new URLSearchParams(location.search);
-    const tab = urlParams.get('tab');
-    console.log('Tab from URL:', tab);
-    if (tab && ['personal', 'avatar', 'password', 'subscription', 'danger'].includes(tab)) {
-      setActiveTab(tab);
-      console.log('Setting active tab to:', tab);
-    } else if (location.state?.activeTab) {
-      setActiveTab(location.state.activeTab);
-      console.log('Setting active tab from state to:', location.state.activeTab);
-    }
-  }, [location]);
 
   useEffect(() => {
     if (!user) {
@@ -139,18 +120,6 @@ const Profile = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleTabChange = (tab: string) => {
-    console.log('Changing tab to:', tab); // Debug log
-    setActiveTab(tab);
-    setError('');
-    setSuccess('');
-    
-    // Atualizar URL sem recarregar a página
-    const newUrl = new URL(window.location.href);
-    newUrl.searchParams.set('tab', tab);
-    window.history.pushState({}, '', newUrl.toString());
   };
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
@@ -347,15 +316,6 @@ const Profile = () => {
     );
   }
 
-  // Definir as abas disponíveis
-  const tabs = [
-    { id: 'personal', label: 'Informações Pessoais', icon: User },
-    { id: 'avatar', label: 'Foto de Perfil', icon: Camera },
-    { id: 'password', label: 'Alterar Senha', icon: Key },
-    { id: 'subscription', label: 'Assinatura', icon: CreditCard },
-    { id: 'danger', label: 'Excluir Conta', icon: Trash2 },
-  ];
-
   return (
     <div className="py-8 px-4">
       {error && (
@@ -371,237 +331,200 @@ const Profile = () => {
 
       <div className="max-w-4xl mx-auto">
         <div className="bg-white rounded-lg shadow">
-          {/* Tab Navigation */}
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8 px-6" aria-label="Tabs">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => handleTabChange(tab.id)}
-                  className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center transition-colors duration-200 ${
-                    activeTab === tab.id
-                      ? tab.id === 'danger' 
-                        ? 'border-red-500 text-red-600'
-                        : 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  <tab.icon className="h-5 w-5 mr-2" />
-                  {tab.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-
-          {/* Tab Content */}
           <div className="p-6">
-            {/* Debug info */}
-            <div className="mb-4 text-xs text-gray-400">
-              Aba ativa: {activeTab}
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">Perfil do Usuário</h2>
+            
+            {/* Personal Information Section */}
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Informações Pessoais</h3>
+              <form onSubmit={handleProfileUpdate} className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">
+                      Nome
+                    </label>
+                    <input
+                      type="text"
+                      id="first_name"
+                      value={profile.first_name}
+                      onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="last_name" className="block text-sm font-medium text-gray-700">
+                      Sobrenome
+                    </label>
+                    <input
+                      type="text"
+                      id="last_name"
+                      value={profile.last_name}
+                      onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
+                      className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
+                    Telefone
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    value={profile.phone}
+                    onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
+                    className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="birth_date" className="block text-sm font-medium text-gray-700">
+                    Data de nascimento
+                  </label>
+                  <input
+                    type="date"
+                    id="birth_date"
+                    value={profile.birth_date}
+                    onChange={(e) => setProfile({ ...profile, birth_date: e.target.value })}
+                    className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 transition-all duration-200"
+                >
+                  {loading ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </form>
             </div>
 
-            {/* Personal Information Tab */}
-            {activeTab === 'personal' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Informações Pessoais</h2>
-                <form onSubmit={handleProfileUpdate} className="space-y-6">
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                      <label htmlFor="first_name" className="block text-sm font-medium text-gray-700">
-                        Nome
-                      </label>
-                      <input
-                        type="text"
-                        id="first_name"
-                        value={profile.first_name}
-                        onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                        className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="last_name" className="block text-sm font-medium text-gray-700">
-                        Sobrenome
-                      </label>
-                      <input
-                        type="text"
-                        id="last_name"
-                        value={profile.last_name}
-                        onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                        className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                      Telefone
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      value={profile.phone}
-                      onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="birth_date" className="block text-sm font-medium text-gray-700">
-                      Data de nascimento
-                    </label>
-                    <input
-                      type="date"
-                      id="birth_date"
-                      value={profile.birth_date}
-                      onChange={(e) => setProfile({ ...profile, birth_date: e.target.value })}
-                      className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 transition-all duration-200"
-                  >
-                    {loading ? 'Salvando...' : 'Salvar alterações'}
-                  </button>
-                </form>
-              </div>
-            )}
-
-            {/* Avatar Tab */}
-            {activeTab === 'avatar' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Foto de Perfil</h2>
-                <div className="space-y-6">
-                  <div className="flex items-center justify-center">
-                    <div className="relative">
-                      <div className="h-32 w-32 rounded-full overflow-hidden bg-primary-100 flex items-center justify-center">
-                        {avatarUrl ? (
-                          <img
-                            src={avatarUrl}
-                            alt={`Avatar de ${user?.email}`}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.style.display = 'none';
-                              target.parentElement!.innerHTML = `<span class="text-2xl font-medium text-primary-600">${getInitials(user?.email || '')}</span>`;
-                            }}
-                          />
-                        ) : (
-                          <span className="text-2xl font-medium text-primary-600">
-                            {getInitials(user?.email || '')}
-                          </span>
-                        )}
-                      </div>
-                      <div className="absolute bottom-0 right-0 flex gap-2">
-                        <label
-                          htmlFor="avatar-upload"
-                          className="bg-primary-600 rounded-full p-2 cursor-pointer hover:bg-primary-700 transition-colors duration-200"
-                        >
-                          <input
-                            type="file"
-                            id="avatar-upload"
-                            accept="image/*"
-                            onChange={handleAvatarChange}
-                            className="hidden"
-                          />
-                          <Camera className="h-5 w-5 text-white" />
-                        </label>
-                        {avatarUrl && (
-                          <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className="bg-red-600 rounded-full p-2 hover:bg-red-700 transition-colors duration-200"
-                          >
-                            <Trash2 className="h-5 w-5 text-white" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-sm text-gray-500 text-center">
-                    Clique no ícone da câmera para alterar sua foto de perfil
+            {/* Subscription Section */}
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Assinatura</h3>
+              <div className="bg-gray-50 p-6 rounded-lg">
+                <h4 className="text-md font-medium text-gray-900">Plano atual</h4>
+                <div className="mt-4">
+                  <p className="text-sm text-gray-500">
+                    Plano:{' '}
+                    <span className="font-medium text-gray-900">
+                      {subscription?.plan === 'free' ? 'Gratuito' : subscription?.plan === 'monthly' ? 'Mensal' : 'Anual'}
+                    </span>
                   </p>
+                  <p className="text-sm text-gray-500">
+                    Status:{' '}
+                    <span className="font-medium text-green-600">
+                      {subscription?.status === 'active' ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </p>
+                  {subscription?.plan !== 'free' && (
+                    <p className="text-sm text-gray-500">
+                      Próximo vencimento:{' '}
+                      <span className="font-medium text-gray-900">
+                        {formatDate(subscription?.current_period_end)}
+                      </span>
+                    </p>
+                  )}
+                </div>
+                <div className="mt-6">
+                  <button
+                    onClick={() => navigate('/pricing')}
+                    className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+                  >
+                    {subscription?.plan === 'free' ? 'Assinar um plano' : 'Gerenciar assinatura'}
+                  </button>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Password Tab */}
-            {activeTab === 'password' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Alterar Senha</h2>
-                <form onSubmit={handlePasswordChange} className="space-y-6">
-                  <div>
-                    <label htmlFor="current-password" className="block text-sm font-medium text-gray-700">
-                      Senha atual
-                    </label>
-                    <input
-                      type="password"
-                      id="current-password"
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="new-password" className="block text-sm font-medium text-gray-700">
-                      Nova senha
-                    </label>
-                    <input
-                      type="password"
-                      id="new-password"
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="mt-1 block w-full rounded-lg border-2 border-gray-300 px-4 py-3 bg-white shadow-sm focus:border-primary-500 focus:ring-2 focus:ring-primary-200 focus:ring-opacity-50 transition-colors duration-200"
-                      required
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 transition-all duration-200"
-                  >
-                    {loading ? 'Alterando...' : 'Alterar senha'}
-                  </button>
-                </form>
+            {/* Danger Zone Section */}
+            <div className="mb-8">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Zona de Perigo</h3>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+                <h4 className="text-md font-medium text-red-800 mb-4">Excluir Conta</h4>
+                <p className="text-sm text-red-600 mb-6">
+                  Atenção: Esta ação é irreversível. Todos os seus dados serão permanentemente excluídos.
+                </p>
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors duration-200"
+                >
+                  Excluir minha conta
+                </button>
               </div>
-            )}
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Subscription Tab */}
-            {activeTab === 'subscription' && (
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Assinatura</h2>
-                <div className="space-y-6">
-                  <div className="bg-gray-50 p-6 rounded-lg">
-                    <h3 className="text-lg font-medium text-gray-900">Plano atual</h3>
-                    <div className="mt-4">
-                      <p className="text-sm text-gray-500">
-                        Plano:{' '}
-                        <span className="font-medium text-gray-900">
-                          {subscription?.plan === 'free' ? 'Gratuito' : subscription?.plan === 'monthly' ? 'Mensal' : 'Anual'}
-                        </span>
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        Status:{' '}
-                        <span className="font-medium text-green-600">
-                          {subscription?.status === 'active' ? 'Ativo' : 'Inativo'}
-                        </span>
-                      </p>
-                      {subscription?.plan !== 'free' && (
-                        <p className="text-sm text-gray-500">
-                          Próximo vencimento:{' '}
-                          <span className="font-medium text-gray-900">
-                            {formatDate(subscription?.current_period_end)}
-                          </span>
-                        </p>
-                      )}
-                    </div>
-                    <div className="mt-6">
-                      <button
-                        onClick={() => navigate('/pricing')}
-                        className="w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
-                      >
-                        {subscription?.plan === 'free' ? 'Assinar um plano' : 'Gerenciar assinatura'}
-                      </button>
-                    </div>
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">
+              Confirmar exclusão da conta
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Tem certeza que deseja excluir sua conta? Esta ação não pode ser desfeita e todos os seus dados serão permanentemente excluídos.
+            </p>
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+                disabled={loading}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={loading}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50"
+              >
+                {loading ? 'Excluindo...' : 'Excluir conta'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Image Cropper Modal */}
+      {showImageCropper && selectedImage && (
+        <ImageCropper
+          image={selectedImage}
+          onCropComplete={handleCroppedImage}
+          onCancel={() => {
+            setShowImageCropper(false);
+            setSelectedImage(null);
+          }}
+        />
+      )}
+
+      {/* Success Modal */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Conta excluída com sucesso</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Sua conta foi excluída permanentemente. Todos os seus dados foram removidos do sistema.
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={async () => {
+                  await signOut();
+                  navigate('/');
+                }}
+                className="px-4 py-2 border border-transparent rounded-md text-sm font-medium text-white bg-primary-600 hover:bg-primary-700"
+              >
+                Ok
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Profile;
                   </div>
                 </div>
               </div>
