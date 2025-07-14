@@ -35,17 +35,11 @@ const getReadableErrorMessage = (error: AuthError): string => {
   return error.message;
 };
 
-// Sistema global para controle de criação de usuários
+// Sistema global para controle de criação de usuários - SIMPLIFICADO
 class UserCreationManager {
   private static instance: UserCreationManager;
-  private activeCreations = new Map<string, {
-    promise: Promise<any>;
-    timestamp: number;
-    attempts: number;
-  }>();
   private completedUsers = new Set<string>();
-  private readonly MAX_ATTEMPTS = 3; // Aumentado para 3 tentativas
-  private readonly TIMEOUT_MS = 300000; // 5 minutos
+  private processingUsers = new Set<string>();
 
   static getInstance(): UserCreationManager {
     if (!UserCreationManager.instance) {
@@ -54,36 +48,30 @@ class UserCreationManager {
     return UserCreationManager.instance;
   }
 
-  private constructor() {
-    // Limpeza periódica a cada 2 minutos
-    setInterval(() => {
-      this.cleanup();
-    }, 120000);
-  }
-
-  private cleanup() {
-    const now = Date.now();
-    for (const [userId, data] of this.activeCreations.entries()) {
-      if (now - data.timestamp > this.TIMEOUT_MS) {
-        console.log(`Cleaning up expired creation for user: ${userId}`);
-        this.activeCreations.delete(userId);
-      }
-    }
-  }
+  private constructor() {}
 
   isUserCompleted(userId: string): boolean {
     return this.completedUsers.has(userId);
   }
 
+  isUserProcessing(userId: string): boolean {
+    return this.processingUsers.has(userId);
+  }
+
   markUserCompleted(userId: string) {
     this.completedUsers.add(userId);
-    this.activeCreations.delete(userId);
+    this.processingUsers.delete(userId);
     console.log(`User marked as completed: ${userId}`);
   }
 
+  markUserProcessing(userId: string) {
+    this.processingUsers.add(userId);
+    console.log(`User marked as processing: ${userId}`);
+  }
+
   reset() {
-    this.activeCreations.clear();
     this.completedUsers.clear();
+    this.processingUsers.clear();
     console.log('UserCreationManager reset');
   }
 
@@ -96,44 +84,28 @@ class UserCreationManager {
       return { success: true, message: 'User already completed' };
     }
 
-    // Verifica se já existe um processo ativo
-    const existing = this.activeCreations.get(userId);
-    if (existing) {
-      console.log(`Waiting for existing creation process: ${userId}`);
-      try {
-        return await existing.promise;
-      } catch (error) {
-        console.log(`Existing process failed, will retry: ${error.message}`);
-        this.activeCreations.delete(userId);
-      }
+    // Verifica se já está sendo processado
+    if (this.isUserProcessing(userId)) {
+      console.log(`User already being processed: ${userId}`);
+      return { success: true, message: 'User being processed' };
     }
 
-    // Verifica se já excedeu o número máximo de tentativas
-    if (existing && existing.attempts >= this.MAX_ATTEMPTS) {
-      console.log(`Max attempts reached for user: ${userId}`);
-      throw new Error('Maximum creation attempts reached');
-    }
-
-    // Cria novo processo de criação
-    const creationPromise = this.createUser(accessToken, userId);
-    
-    this.activeCreations.set(userId, {
-      promise: creationPromise,
-      timestamp: Date.now(),
-      attempts: (existing?.attempts || 0) + 1
-    });
+    // Marca como processando
+    this.markUserProcessing(userId);
 
     try {
-      const result = await creationPromise;
+      const result = await this.createUser(accessToken, userId);
       
       if (result.success) {
         this.markUserCompleted(userId);
+      } else {
+        this.processingUsers.delete(userId);
       }
       
       return result;
     } catch (error) {
       console.error(`User creation failed for ${userId}:`, error);
-      // Não remove imediatamente para permitir retry
+      this.processingUsers.delete(userId);
       throw error;
     }
   }
@@ -162,75 +134,77 @@ class UserCreationManager {
 
         if (existingCustomer?.customer_id && !existingCustomer.customer_id.startsWith('temp_')) {
           console.log(`User already has Stripe customer: ${userId}`);
-          this.markUserCompleted(userId);
           return { success: true, message: 'User already exists with Stripe customer' };
         }
       }
 
-      // Faz a chamada para a Edge Function
+      // Faz a chamada para a Edge Function com retry limitado
       console.log(`Making Edge Function call for: ${userId}`);
       
-      const response = await fetch(`${supabaseUrl}/functions/v1/create-user-complete`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          force_recreate: false
-        })
-      });
+      const maxRetries = 3;
+      let lastError: any;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`Edge Function error for ${userId}:`, errorText);
-        
-        if (response.status === 409) {
-          console.log(`Conflict detected for ${userId}, checking if user was created...`);
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await fetch(`${supabaseUrl}/functions/v1/create-user-complete`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              user_id: userId,
+              force_recreate: false
+            })
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log(`Edge Function success for ${userId} on attempt ${attempt}:`, result);
+            return result;
+          }
+
+          if (response.status === 409) {
+            console.log(`Conflict detected for ${userId} on attempt ${attempt}, checking if user was created...`);
+            
+            // Aguarda um pouco e verifica se foi criado
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const { data: userData } = await supabase
+              .from('users')
+              .select('id')
+              .eq('id', userId)
+              .maybeSingle();
+            
+            if (userData) {
+              console.log(`User was created by another process: ${userId}`);
+              return { success: true, message: 'User created by another process' };
+            }
+          }
+
+          const errorText = await response.text();
+          lastError = new Error(`Edge Function failed (attempt ${attempt}): ${errorText}`);
+          console.error(lastError.message);
+
+          // Se não é o último retry, aguarda antes de tentar novamente
+          if (attempt < maxRetries) {
+            const delay = attempt * 2000; // 2s, 4s, 6s
+            console.log(`Waiting ${delay}ms before retry...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+
+        } catch (fetchError) {
+          lastError = fetchError;
+          console.error(`Network error on attempt ${attempt}:`, fetchError);
           
-          // Aguarda um pouco e verifica se foi criado
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-          const { data: userData } = await supabase
-            .from('users')
-            .select('id')
-            .eq('id', userId)
-            .maybeSingle();
-          
-          if (userData) {
-            console.log(`User was created by another process: ${userId}`);
-            this.markUserCompleted(userId);
-            return { success: true, message: 'User created by another process' };
+          if (attempt < maxRetries) {
+            const delay = attempt * 2000;
+            await new Promise(resolve => setTimeout(resolve, delay));
           }
         }
-        
-        throw new Error(`Edge Function failed: ${errorText}`);
       }
 
-      const result = await response.json();
-      console.log(`Edge Function result for ${userId}:`, result);
-      
-      if (result.success) {
-        // Verifica se o usuário foi realmente criado
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id')
-          .eq('id', userId)
-          .maybeSingle();
-        
-        if (userData) {
-          console.log(`User creation verified for: ${userId}`);
-          this.markUserCompleted(userId);
-          return result;
-        } else {
-          throw new Error('User not found in database after creation');
-        }
-      }
-      
-      return result;
+      throw lastError || new Error('All retry attempts failed');
 
     } catch (error) {
       console.error(`Error creating user ${userId}:`, error);
@@ -246,7 +220,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const processedUsers = useRef<Set<string>>(new Set());
-  const authStateProcessed = useRef<boolean>(false);
   const userCreationInProgress = useRef<boolean>(false);
 
   useEffect(() => {
@@ -280,14 +253,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Processa criação de usuário apenas no SIGNED_IN e se não estiver em progresso
       if (session?.access_token && currentUser && event === 'SIGNED_IN' && !userCreationInProgress.current) {
         
-        // Marca como em progresso imediatamente
-        userCreationInProgress.current = true;
-        
         // Verifica se já foi processado anteriormente nesta sessão
         if (processedUsers.current.has(currentUser.id)) {
           console.log(`User already processed in this session: ${currentUser.id}`);
           setLoading(false);
-          userCreationInProgress.current = false;
           return;
         }
         
@@ -298,11 +267,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userCreationManager.isUserCompleted(currentUser.id)) {
           console.log(`User already completed: ${currentUser.id}`);
           setLoading(false);
-          userCreationInProgress.current = false;
           return;
         }
         
-        // Delay para garantir estabilidade da sessão
+        // Marca como em progresso
+        userCreationInProgress.current = true;
+        
+        // Delay mínimo para garantir estabilidade da sessão
         setTimeout(async () => {
           if (!mounted || !userCreationInProgress.current) return;
           
@@ -317,7 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } finally {
             userCreationInProgress.current = false;
           }
-        }, 2000);
+        }, 1000); // Reduzido para 1 segundo
       }
       
       if (mounted) {
@@ -363,7 +334,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       // Reset de estados antes do login
-      authStateProcessed.current = false;
       userCreationInProgress.current = false;
       
       const { error } = await supabase.auth.signInWithPassword({
@@ -432,7 +402,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setError(null);
       
       // Reset de estados antes do login
-      authStateProcessed.current = false;
       userCreationInProgress.current = false;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
@@ -458,7 +427,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     try {
       // Reset de todos os estados
-      authStateProcessed.current = false;
       userCreationInProgress.current = false;
       processedUsers.current.clear();
       userCreationManager.reset();

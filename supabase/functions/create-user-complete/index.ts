@@ -32,6 +32,9 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
 };
 
+// Global lock manager para evitar múltiplas execuções simultâneas
+const activeLocks = new Map<string, Promise<any>>();
+
 async function logStripeEvent(
   supabaseClient: any,
   userId: string,
@@ -57,40 +60,139 @@ async function logStripeEvent(
   }
 }
 
-async function waitForUserData(supabaseClient: any, userId: string, retries = 20, delay = 1000): Promise<any> {
-  for (let i = 0; i < retries; i++) {
-    console.log(`Attempt ${i + 1}: Checking for user data...`);
-    
-    try {
-      // Check if auth user exists
-      const { data: authUser, error: authError } = await supabaseClient.auth.admin.getUserById(userId);
-      
-      if (authError || !authUser?.user) {
-        console.log(`Attempt ${i + 1}: Auth user not found yet -`, authError?.message || 'User not found');
-        if (i < retries - 1) {
-          await new Promise(resolve => setTimeout(resolve, delay));
-          delay = Math.min(delay * 1.1, 5000); // Gradual backoff, max 5 seconds
-          continue;
-        }
-        return { data: null, error: new Error('Auth user not found after retries') };
-      }
+async function acquireDistributedLock(supabaseClient: any, userId: string, timeoutMs = 30000): Promise<boolean> {
+  const lockId = `user_creation_${userId}`;
+  const expiresAt = new Date(Date.now() + timeoutMs);
+  
+  try {
+    // Tentar adquirir o lock
+    const { data, error } = await supabaseClient
+      .from('user_creation_state')
+      .upsert({
+        user_id: userId,
+        state: 'locked',
+        step: 'Acquiring distributed lock',
+        locked_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'user_id',
+        ignoreDuplicates: false
+      })
+      .select();
 
-      console.log('Auth user found:', authUser.user.email);
-      return { data: authUser.user, error: null };
-      
-    } catch (error) {
-      console.log(`Attempt ${i + 1} error:`, error.message);
-      if (i < retries - 1) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        delay = Math.min(delay * 1.1, 5000);
-        continue;
-      }
-      return { data: null, error };
+    if (error) {
+      console.error('Error acquiring lock:', error);
+      return false;
     }
-  }
 
-  console.log('Failed to find user data after all attempts');
-  return { data: null, error: new Error('User data not found after multiple attempts') };
+    // Verificar se conseguimos o lock (não havia outro processo)
+    const { data: lockCheck } = await supabaseClient
+      .from('user_creation_state')
+      .select('locked_at, state')
+      .eq('user_id', userId)
+      .single();
+
+    if (lockCheck?.state === 'locked' && lockCheck.locked_at) {
+      const lockTime = new Date(lockCheck.locked_at);
+      const now = new Date();
+      
+      // Se o lock é muito antigo (mais de 5 minutos), consideramos expirado
+      if (now.getTime() - lockTime.getTime() > 300000) {
+        console.log('Lock expired, taking over');
+        return true;
+      }
+      
+      // Se o lock é nosso (mesmo timestamp), temos o lock
+      return true;
+    }
+
+    return false;
+  } catch (error) {
+    console.error('Error in acquireDistributedLock:', error);
+    return false;
+  }
+}
+
+async function releaseDistributedLock(supabaseClient: any, userId: string, finalState: string = 'completed') {
+  try {
+    await supabaseClient
+      .from('user_creation_state')
+      .update({
+        state: finalState,
+        locked_at: null,
+        completed_at: finalState === 'completed' ? new Date().toISOString() : null,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId);
+  } catch (error) {
+    console.error('Error releasing lock:', error);
+  }
+}
+
+async function findExistingStripeCustomer(email: string): Promise<string | null> {
+  try {
+    console.log('Searching for existing Stripe customer with email:', email);
+    
+    const customers = await stripe.customers.list({
+      email: email,
+      limit: 10
+    });
+
+    if (customers.data.length > 0) {
+      // Procurar por customer ativo (não deletado)
+      const activeCustomer = customers.data.find(c => !c.deleted);
+      if (activeCustomer) {
+        console.log('Found existing active Stripe customer:', activeCustomer.id);
+        return activeCustomer.id;
+      }
+    }
+
+    console.log('No existing Stripe customer found for email:', email);
+    return null;
+  } catch (error) {
+    console.error('Error searching for existing Stripe customer:', error);
+    return null;
+  }
+}
+
+async function cleanupDuplicateStripeCustomers(email: string, keepCustomerId: string) {
+  try {
+    console.log('Cleaning up duplicate Stripe customers for email:', email);
+    
+    const customers = await stripe.customers.list({
+      email: email,
+      limit: 100
+    });
+
+    const duplicates = customers.data.filter(c => c.id !== keepCustomerId && !c.deleted);
+    
+    for (const duplicate of duplicates) {
+      try {
+        console.log('Deleting duplicate Stripe customer:', duplicate.id);
+        
+        // Cancelar todas as subscriptions do customer duplicado
+        const subscriptions = await stripe.subscriptions.list({
+          customer: duplicate.id,
+          status: 'all'
+        });
+
+        for (const sub of subscriptions.data) {
+          if (sub.status === 'active' || sub.status === 'trialing') {
+            await stripe.subscriptions.cancel(sub.id);
+            console.log('Cancelled subscription:', sub.id);
+          }
+        }
+
+        // Deletar o customer duplicado
+        await stripe.customers.del(duplicate.id);
+        console.log('Successfully deleted duplicate customer:', duplicate.id);
+      } catch (deleteError) {
+        console.error('Error deleting duplicate customer:', duplicate.id, deleteError);
+      }
+    }
+  } catch (error) {
+    console.error('Error in cleanupDuplicateStripeCustomers:', error);
+  }
 }
 
 Deno.serve(async (req) => {
@@ -99,8 +201,7 @@ Deno.serve(async (req) => {
       return new Response('ok', { headers: corsHeaders });
     }
     
-    console.log('Starting create-user-complete function');
-    console.log('Environment check - Stripe key present:', !!stripeKey);
+    console.log('=== Starting create-user-complete function ===');
 
     // Get the authorization header
     const authHeader = req.headers.get('Authorization');
@@ -163,10 +264,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Got user:', user.id, 'email:', user.email);
+    console.log('Processing user:', user.id, 'email:', user.email);
 
-    // Step 1: Check if user already has a real Stripe customer (quick check)
-    console.log('Quick check for existing Stripe customer...');
+    // STEP 1: Verificar se já existe um lock ativo para este usuário
+    if (activeLocks.has(user.id)) {
+      console.log('User creation already in progress (memory lock)');
+      try {
+        const result = await activeLocks.get(user.id);
+        return new Response(
+          JSON.stringify(result),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: result.success ? 200 : 409,
+          }
+        );
+      } catch (error) {
+        console.log('Previous process failed, continuing...');
+        activeLocks.delete(user.id);
+      }
+    }
+
+    // STEP 2: Verificação rápida se usuário já está completo
+    console.log('Quick check for existing complete user...');
     const { data: quickCheck } = await supabaseAdmin
       .from('stripe_customers')
       .select('customer_id')
@@ -176,293 +295,237 @@ Deno.serve(async (req) => {
 
     if (quickCheck?.customer_id && !quickCheck.customer_id.startsWith('temp_')) {
       console.log('User already has real Stripe customer:', quickCheck.customer_id);
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          customerId: quickCheck.customer_id,
-          message: 'User already exists with Stripe customer'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    }
-
-    // Step 2: Call the PostgreSQL function to ensure local records and acquire lock
-    console.log('Calling create_user_complete RPC function...');
-    const { data: rpcResult, error: rpcError } = await supabaseAdmin
-      .rpc('create_user_complete', {
-        p_user_id: user.id,
-        p_email: user.email,
-        p_force_recreate: forceRecreate
-      });
-
-    if (rpcError) {
-      console.error('Error calling create_user_complete RPC:', rpcError);
-      await logStripeEvent(supabaseAdmin, user.id, null, 'rpc_call_failed', null, null, rpcError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to initialize user creation',
-          details: rpcError.message 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
-    }
-
-    console.log('RPC result:', rpcResult);
-
-    // Check if user creation is already completed
-    if (rpcResult.success && rpcResult.state === 'completed') {
-      console.log('User creation already completed');
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          message: 'User already exists with complete Stripe integration',
-          state: 'completed'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-    }
-
-    // Check if we failed to acquire lock (another process is working)
-    if (!rpcResult.success && rpcResult.state === 'locked') {
-      console.log('User creation in progress by another process');
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          message: 'User creation in progress',
-          state: 'locked'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 409, // Conflict
-        }
-      );
-    }
-
-    // If RPC failed for other reasons
-    if (!rpcResult.success) {
-      console.error('RPC failed:', rpcResult);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to prepare user creation',
-          details: rpcResult.error || rpcResult.message
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500
-        }
-      );
-    }
-
-    // Step 3: Final check if Stripe customer already exists (race condition protection)
-    console.log('Re-checking Stripe customer status...');
-    const { data: existingCustomer } = await supabaseAdmin
-      .from('stripe_customers')
-      .select('customer_id')
-      .eq('user_id', user.id)
-      .is('deleted_at', null)
-      .maybeSingle();
-
-    // If customer_id is real (not temp_), another process already created the Stripe customer
-    if (existingCustomer?.customer_id && !existingCustomer.customer_id.startsWith('temp_')) {
-      console.log('Real Stripe customer already exists:', existingCustomer.customer_id);
       
-      // Update state to completed
-      await supabaseAdmin
-        .from('user_creation_state')
-        .update({
-          state: 'completed',
-          step: 'Stripe customer already existed',
-          completed_at: new Date().toISOString(),
-          locked_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          customerId: existingCustomer.customer_id,
-          message: 'User already exists with Stripe customer'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
+      // Verificar se o customer ainda existe no Stripe
+      try {
+        const stripeCustomer = await stripe.customers.retrieve(quickCheck.customer_id);
+        if (!stripeCustomer.deleted) {
+          return new Response(
+            JSON.stringify({ 
+              success: true,
+              customerId: quickCheck.customer_id,
+              message: 'User already exists with valid Stripe customer'
+            }),
+            {
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 200,
+            }
+          );
         }
-      );
-    }
-
-    // Wait for auth user to be fully available
-    const { data: authUserData, error: authUserError } = await waitForUserData(supabaseAdmin, user.id);
-    
-    if (authUserError || !authUserData) {
-      console.error('Auth user not available after retries:', authUserError);
-      await logStripeEvent(supabaseAdmin, user.id, null, 'auth_user_not_found', null, null, authUserError);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Auth user not available',
-          details: authUserError?.message 
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 404
-        }
-      );
-    }
-
-    // Step 4: Create real Stripe customer (we have the lock and no real customer exists)
-    console.log('Creating real Stripe customer...');
-    console.log('Using Stripe key prefix:', stripeKey.substring(0, 7));
-    
-    const customerData = {
-      email: user.email,
-      description: 'SmartCut user',
-      metadata: {
-        userId: user.id,
-        source: 'smartcut_app'
+      } catch (stripeError) {
+        console.log('Stripe customer not found, will recreate:', stripeError.message);
       }
-    };
+    }
 
-    await logStripeEvent(supabaseAdmin, user.id, null, 'create_customer_request', customerData);
+    // STEP 3: Criar promise para o lock de memória
+    const creationPromise = (async () => {
+      try {
+        // STEP 4: Adquirir lock distribuído
+        console.log('Acquiring distributed lock...');
+        const lockAcquired = await acquireDistributedLock(supabaseAdmin, user.id);
+        
+        if (!lockAcquired) {
+          console.log('Failed to acquire distributed lock');
+          return {
+            success: false,
+            message: 'User creation in progress by another process',
+            state: 'locked'
+          };
+        }
+
+        console.log('Distributed lock acquired successfully');
+
+        try {
+          // STEP 5: Verificar novamente se já existe customer (race condition protection)
+          const { data: existingCustomer } = await supabaseAdmin
+            .from('stripe_customers')
+            .select('customer_id')
+            .eq('user_id', user.id)
+            .is('deleted_at', null)
+            .maybeSingle();
+
+          if (existingCustomer?.customer_id && !existingCustomer.customer_id.startsWith('temp_')) {
+            console.log('Customer created by another process:', existingCustomer.customer_id);
+            await releaseDistributedLock(supabaseAdmin, user.id, 'completed');
+            return {
+              success: true,
+              customerId: existingCustomer.customer_id,
+              message: 'User already exists with Stripe customer'
+            };
+          }
+
+          // STEP 6: Procurar por customer existente no Stripe
+          let stripeCustomerId = await findExistingStripeCustomer(user.email!);
+          
+          if (stripeCustomerId) {
+            console.log('Found existing Stripe customer, will reuse:', stripeCustomerId);
+            
+            // Limpar duplicatas
+            await cleanupDuplicateStripeCustomers(user.email!, stripeCustomerId);
+          } else {
+            // STEP 7: Criar novo customer no Stripe
+            console.log('Creating new Stripe customer...');
+            
+            const customerData = {
+              email: user.email,
+              description: 'SmartCut user',
+              metadata: {
+                userId: user.id,
+                source: 'smartcut_app',
+                created_at: new Date().toISOString()
+              }
+            };
+
+            await logStripeEvent(supabaseAdmin, user.id, null, 'create_customer_request', customerData);
+
+            const customer = await stripe.customers.create(customerData);
+            stripeCustomerId = customer.id;
+
+            await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_customer_response', null, customer);
+            console.log('Created new Stripe customer:', customer.id);
+          }
+
+          // STEP 8: Verificar se já existe subscription ativa
+          let subscriptionId: string | null = null;
+          
+          try {
+            const subscriptions = await stripe.subscriptions.list({
+              customer: stripeCustomerId,
+              status: 'active',
+              limit: 1
+            });
+
+            if (subscriptions.data.length > 0) {
+              subscriptionId = subscriptions.data[0].id;
+              console.log('Found existing active subscription:', subscriptionId);
+            }
+          } catch (subError) {
+            console.log('Error checking existing subscriptions:', subError.message);
+          }
+
+          // STEP 9: Criar subscription se não existir
+          if (!subscriptionId) {
+            console.log('Creating free subscription...');
+            
+            const subscription = await stripe.subscriptions.create({
+              customer: stripeCustomerId,
+              items: [{ 
+                price: PRICES.free,
+                quantity: 1
+              }],
+              trial_period_days: 36500, // 100 years trial for free plan
+              metadata: {
+                userId: user.id,
+                plan: 'free'
+              }
+            });
+
+            subscriptionId = subscription.id;
+            console.log('Created free subscription:', subscription.id);
+            await logStripeEvent(supabaseAdmin, user.id, stripeCustomerId, 'create_subscription_response', null, subscription);
+          }
+
+          // STEP 10: Chamar função RPC para criar/atualizar registros locais
+          console.log('Calling create_user_complete RPC function...');
+          const { data: rpcResult, error: rpcError } = await supabaseAdmin
+            .rpc('create_user_complete', {
+              p_user_id: user.id,
+              p_email: user.email,
+              p_force_recreate: forceRecreate
+            });
+
+          if (rpcError) {
+            console.error('Error calling create_user_complete RPC:', rpcError);
+            throw rpcError;
+          }
+
+          // STEP 11: Atualizar registros com IDs reais do Stripe
+          const { error: customerUpdateError } = await supabaseAdmin
+            .from('stripe_customers')
+            .upsert({
+              user_id: user.id,
+              customer_id: stripeCustomerId,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'user_id'
+            });
+
+          if (customerUpdateError) {
+            console.error('Error updating customer record:', customerUpdateError);
+            throw customerUpdateError;
+          }
+
+          // STEP 12: Atualizar subscription record
+          if (subscriptionId) {
+            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+            
+            const { error: subscriptionUpdateError } = await supabaseAdmin
+              .from('stripe_subscriptions')
+              .upsert({
+                customer_id: stripeCustomerId,
+                subscription_id: subscriptionId,
+                price_id: PRICES.free,
+                status: subscription.status,
+                current_period_start: subscription.current_period_start,
+                current_period_end: subscription.current_period_end,
+                cancel_at_period_end: subscription.cancel_at_period_end,
+                updated_at: new Date().toISOString()
+              }, {
+                onConflict: 'customer_id'
+              });
+
+            if (subscriptionUpdateError) {
+              console.error('Error updating subscription record:', subscriptionUpdateError);
+            }
+          }
+
+          // STEP 13: Liberar lock e marcar como completo
+          await releaseDistributedLock(supabaseAdmin, user.id, 'completed');
+
+          console.log('=== User creation completed successfully ===');
+
+          return {
+            success: true,
+            customerId: stripeCustomerId,
+            subscriptionId: subscriptionId,
+            message: 'User created successfully with Stripe integration'
+          };
+
+        } catch (error) {
+          console.error('Error during user creation:', error);
+          await releaseDistributedLock(supabaseAdmin, user.id, 'failed');
+          throw error;
+        }
+
+      } catch (error) {
+        console.error('Error in creation promise:', error);
+        throw error;
+      }
+    })();
+
+    // STEP 14: Armazenar promise no lock de memória
+    activeLocks.set(user.id, creationPromise);
 
     try {
-      const customer = await stripe.customers.create(customerData);
-
-      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_customer_response', null, customer);
-
-      console.log('Created Stripe customer:', customer.id);
-
-      // Step 5: Create free subscription
-      const subscription = await stripe.subscriptions.create({
-        customer: customer.id,
-        items: [{ 
-          price: PRICES.free,
-          quantity: 1
-        }],
-        trial_period_days: 36500, // 100 years trial for free plan
-        metadata: {
-          userId: user.id,
-          plan: 'free'
-        }
-      });
-
-      console.log('Created free subscription:', subscription.id);
-      await logStripeEvent(supabaseAdmin, user.id, customer.id, 'create_subscription_response', null, subscription);
-
-      // Step 6: Update database with real Stripe IDs
-      const { error: customerUpdateError } = await supabaseAdmin
-        .from('stripe_customers')
-        .update({
-          customer_id: customer.id,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      if (customerUpdateError) {
-        console.error('Error updating customer record:', customerUpdateError);
-        await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_customer_update_error', null, null, customerUpdateError);
-        
-        // Try to cleanup Stripe resources
-        try {
-          await stripe.subscriptions.cancel(subscription.id);
-          await stripe.customers.del(customer.id);
-        } catch (cleanupError) {
-          console.error('Error cleaning up Stripe resources:', cleanupError);
-        }
-        
-        throw customerUpdateError;
-      }
-
-      // Step 7: Update subscription record
-      const { error: subscriptionUpdateError } = await supabaseAdmin
-        .from('stripe_subscriptions')
-        .update({
-          subscription_id: subscription.id,
-          price_id: PRICES.free,
-          status: 'active',
-          current_period_start: subscription.current_period_start,
-          current_period_end: subscription.current_period_end,
-          cancel_at_period_end: false,
-          updated_at: new Date().toISOString()
-        })
-        .eq('customer_id', customer.id);
-
-      if (subscriptionUpdateError) {
-        console.error('Error updating subscription record:', subscriptionUpdateError);
-        await logStripeEvent(supabaseAdmin, user.id, customer.id, 'db_subscription_update_error', null, null, subscriptionUpdateError);
-      }
-
-      // Step 8: Update user creation state to completed
-      await supabaseAdmin
-        .from('user_creation_state')
-        .update({
-          state: 'completed',
-          step: 'Stripe integration completed successfully',
-          completed_at: new Date().toISOString(),
-          locked_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      console.log('Successfully created complete user with Stripe integration');
-
-      return new Response(
-        JSON.stringify({ 
-          success: true,
-          customerId: customer.id,
-          subscriptionId: subscription.id,
-          message: 'User created successfully with Stripe integration'
-        }),
-        {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200,
-        }
-      );
-
-    } catch (stripeError: any) {
-      console.error('Stripe API Error:', stripeError);
-      await logStripeEvent(supabaseAdmin, user.id, null, 'stripe_api_error', customerData, null, stripeError);
+      const result = await creationPromise;
+      activeLocks.delete(user.id);
       
-      // Update user creation state to failed
-      await supabaseAdmin
-        .from('user_creation_state')
-        .update({
-          state: 'failed',
-          step: 'Stripe API error',
-          error_message: stripeError.message,
-          locked_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', user.id);
-
-      // Return detailed error information
       return new Response(
-        JSON.stringify({
-          error: 'Stripe API Error',
-          details: stripeError.message,
-          type: stripeError.type,
-          code: stripeError.code,
-          success: false
-        }),
+        JSON.stringify(result),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 400,
+          status: result.success ? 200 : 409,
         }
       );
+    } catch (error) {
+      activeLocks.delete(user.id);
+      throw error;
     }
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('=== Error in create-user-complete ===:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-    console.error('Detailed error:', errorMessage);
+    
     return new Response(
       JSON.stringify({
         error: errorMessage,
