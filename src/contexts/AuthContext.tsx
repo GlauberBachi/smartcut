@@ -35,30 +35,50 @@ const getReadableErrorMessage = (error: AuthError): string => {
   return error.message;
 };
 
-const ensureUserComplete = async (accessToken: string, userId: string) => {
-  const maxRetries = 10;
-  let retryCount = 0;
-  let delay = 2000; // Start with 2 seconds
-  
-  console.log('Starting ensureUserComplete for user:', userId);
+// Global state to track user creation processes
+const userCreationState = new Map<string, {
+  inProgress: boolean;
+  promise: Promise<any> | null;
+  timestamp: number;
+}>();
 
-  while (retryCount < maxRetries) {
+const ensureUserComplete = async (accessToken: string, userId: string): Promise<any> => {
+  console.log('ensureUserComplete called for user:', userId);
+  
+  // Check if user creation is already in progress
+  const existingState = userCreationState.get(userId);
+  const now = Date.now();
+  
+  // If there's an ongoing process that's less than 2 minutes old, wait for it
+  if (existingState && existingState.inProgress && existingState.promise && (now - existingState.timestamp) < 120000) {
+    console.log('User creation already in progress, waiting for existing process...');
+    try {
+      return await existingState.promise;
+    } catch (error) {
+      console.log('Existing process failed, will retry...');
+      userCreationState.delete(userId);
+    }
+  }
+
+  // Clean up old entries (older than 2 minutes)
+  if (existingState && (now - existingState.timestamp) > 120000) {
+    console.log('Cleaning up old user creation state');
+    userCreationState.delete(userId);
+  }
+
+  // Start new user creation process
+  console.log('Starting new user creation process for:', userId);
+  
+  const creationPromise = (async () => {
     try {
       // Get current session and verify it's valid
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session?.access_token) {
-        console.log('No valid session found, attempt:', retryCount + 1);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        if (retryCount < maxRetries - 1) {
-          retryCount++;
-          delay = Math.min(delay * 1.2, 15000); // Max 15 seconds
-          continue;
-        }
-        throw new Error('No valid session available after retries');
+        throw new Error('No valid session available');
       }
 
-      console.log('Making request to create-user-complete Edge Function, attempt:', retryCount + 1);
+      console.log('Making request to create-user-complete Edge Function');
 
       const response = await fetch(`${supabaseUrl}/functions/v1/create-user-complete`, {
         method: 'POST',
@@ -67,8 +87,7 @@ const ensureUserComplete = async (accessToken: string, userId: string) => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          user_id: userId,
-          force_recreate: retryCount > 5 // Force recreate after 5 attempts
+          user_id: userId
         })
       });
 
@@ -81,13 +100,23 @@ const ensureUserComplete = async (accessToken: string, userId: string) => {
           throw new Error('Invalid or expired token. Please sign in again.');
         }
         
-        // If it's a 500 error or timeout, retry
-        if ((response.status >= 500 || response.status === 408) && retryCount < maxRetries - 1) {
-          console.log(`Server error (${response.status}), retrying in ${delay}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-          retryCount++;
-          delay = Math.min(delay * 1.2, 15000);
-          continue;
+        // If it's a conflict (409), another process is handling it
+        if (response.status === 409) {
+          console.log('Another process is handling user creation, waiting...');
+          // Wait a bit and check if user was created
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Verify the user was actually created by checking the database
+          const { data: userData } = await supabase
+            .from('users')
+            .select('id, email')
+            .eq('id', userId)
+            .maybeSingle();
+          
+          if (userData) {
+            console.log('User verified in database after conflict:', userData);
+            return { success: true, message: 'User created by another process' };
+          }
         }
         
         throw new Error(`Failed to create user: ${errorText}`);
@@ -112,13 +141,7 @@ const ensureUserComplete = async (accessToken: string, userId: string) => {
           console.log('User verified in database:', userData);
           return result;
         } else {
-          console.log('User not found in database, retrying...');
-          if (retryCount < maxRetries - 1) {
-            retryCount++;
-            delay = Math.min(delay * 1.2, 15000);
-            await new Promise(resolve => setTimeout(resolve, delay));
-            continue;
-          }
+          throw new Error('User not found in database after creation');
         }
       }
       
@@ -126,32 +149,37 @@ const ensureUserComplete = async (accessToken: string, userId: string) => {
 
     } catch (error) {
       console.error('Error in ensureUserComplete:', error);
-      
-      // If error is related to authentication, don't retry
-      if (error instanceof Error && 
-          (error.message.includes('Invalid token') || 
-           error.message.includes('expired token'))) {
-        throw error;
-      }
-      
-      if (error instanceof Error && retryCount < maxRetries - 1) {
-        console.log(`Retrying ensureUserComplete in ${delay}ms... (attempt ${retryCount + 1}/${maxRetries})`);
-        retryCount++;
-        delay = Math.min(delay * 1.2, 15000);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        continue;
-      }
       throw error;
     }
+  })();
+
+  // Store the promise in our global state
+  userCreationState.set(userId, {
+    inProgress: true,
+    promise: creationPromise,
+    timestamp: now
+  });
+
+  try {
+    const result = await creationPromise;
+    // Mark as completed
+    userCreationState.set(userId, {
+      inProgress: false,
+      promise: null,
+      timestamp: now
+    });
+    return result;
+  } catch (error) {
+    // Remove from state on error so it can be retried
+    userCreationState.delete(userId);
+    throw error;
   }
-  throw new Error('Failed to create user after maximum retries');
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const ensureUserTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const processedUsers = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -164,9 +192,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
-      // If we have a new user (signup or signin), ensure complete user record
-      if (session?.access_token && currentUser && 
-          (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+      // Only process user creation for SIGNED_IN events with a new user
+      if (session?.access_token && currentUser && event === 'SIGNED_IN') {
         
         // Check if we've already processed this user
         if (processedUsers.current.has(currentUser.id)) {
@@ -174,30 +201,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return;
         }
         
-        // Clear any existing timeout to prevent multiple calls
-        if (ensureUserTimeoutRef.current) {
-          clearTimeout(ensureUserTimeoutRef.current);
-        }
-        
-        // Mark user as being processed
+        // Mark user as being processed immediately to prevent duplicates
         processedUsers.current.add(currentUser.id);
         
-        // Add progressive delay based on event type
-        const delay = event === 'SIGNED_IN' ? 5000 : 8000;
-        
-        ensureUserTimeoutRef.current = setTimeout(async () => {
+        // Add a delay to ensure the auth process is complete
+        setTimeout(async () => {
           try {
             console.log('Ensuring complete user record for:', currentUser.id);
             await ensureUserComplete(session.access_token, currentUser.id);
             console.log('User creation process completed for:', currentUser.id);
           } catch (error) {
             console.error('Error ensuring complete user record:', error);
-            // Remove from processed set on error so it can be retried
+            // Remove from processed set on error so it can be retried later
             processedUsers.current.delete(currentUser.id);
-          } finally {
-            ensureUserTimeoutRef.current = null;
           }
-        }, delay);
+        }, 3000); // 3 second delay to ensure auth is stable
       }
       
       setLoading(false);
@@ -205,13 +223,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return () => {
       subscription.unsubscribe();
-      if (ensureUserTimeoutRef.current) {
-        clearTimeout(ensureUserTimeoutRef.current);
-      }
       // Clear processed users on cleanup
       processedUsers.current.clear();
     };
-  }, []); // Remove dependencies to prevent re-registration of auth listener
+  }, []);
 
   const signUp = async (email: string, password: string) => {
     try {
