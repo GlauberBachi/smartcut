@@ -35,7 +35,7 @@ const getReadableErrorMessage = (error: AuthError): string => {
   return error.message;
 };
 
-// Sistema global mais robusto para controle de criação de usuários
+// Sistema global para controle de criação de usuários
 class UserCreationManager {
   private static instance: UserCreationManager;
   private activeCreations = new Map<string, {
@@ -44,7 +44,7 @@ class UserCreationManager {
     attempts: number;
   }>();
   private completedUsers = new Set<string>();
-  private readonly MAX_ATTEMPTS = 1;
+  private readonly MAX_ATTEMPTS = 3; // Aumentado para 3 tentativas
   private readonly TIMEOUT_MS = 300000; // 5 minutos
 
   static getInstance(): UserCreationManager {
@@ -55,10 +55,10 @@ class UserCreationManager {
   }
 
   private constructor() {
-    // Limpeza periódica a cada 5 minutos
+    // Limpeza periódica a cada 2 minutos
     setInterval(() => {
       this.cleanup();
-    }, 300000);
+    }, 120000);
   }
 
   private cleanup() {
@@ -81,8 +81,16 @@ class UserCreationManager {
     console.log(`User marked as completed: ${userId}`);
   }
 
+  reset() {
+    this.activeCreations.clear();
+    this.completedUsers.clear();
+    console.log('UserCreationManager reset');
+  }
+
   async ensureUserComplete(accessToken: string, userId: string): Promise<any> {
-    // Se já foi completado, retorna sucesso imediatamente
+    console.log(`ensureUserComplete called for user: ${userId}`);
+    
+    // Verifica se já foi completado
     if (this.isUserCompleted(userId)) {
       console.log(`User already completed: ${userId}`);
       return { success: true, message: 'User already completed' };
@@ -125,7 +133,7 @@ class UserCreationManager {
       return result;
     } catch (error) {
       console.error(`User creation failed for ${userId}:`, error);
-      this.activeCreations.delete(userId);
+      // Não remove imediatamente para permitir retry
       throw error;
     }
   }
@@ -143,22 +151,20 @@ class UserCreationManager {
 
       if (existingUser) {
         console.log(`User already exists in database: ${userId}`);
-        this.markUserCompleted(userId);
-        return { success: true, message: 'User already exists' };
-      }
+        
+        // Verifica se tem customer no Stripe
+        const { data: existingCustomer } = await supabase
+          .from('stripe_customers')
+          .select('customer_id')
+          .eq('user_id', userId)
+          .is('deleted_at', null)
+          .maybeSingle();
 
-      // Verifica se já tem customer no Stripe
-      const { data: existingCustomer } = await supabase
-        .from('stripe_customers')
-        .select('customer_id')
-        .eq('user_id', userId)
-        .is('deleted_at', null)
-        .maybeSingle();
-
-      if (existingCustomer?.customer_id && !existingCustomer.customer_id.startsWith('temp_')) {
-        console.log(`User already has Stripe customer: ${userId}`);
-        this.markUserCompleted(userId);
-        return { success: true, message: 'User already has Stripe customer' };
+        if (existingCustomer?.customer_id && !existingCustomer.customer_id.startsWith('temp_')) {
+          console.log(`User already has Stripe customer: ${userId}`);
+          this.markUserCompleted(userId);
+          return { success: true, message: 'User already exists with Stripe customer' };
+        }
       }
 
       // Faz a chamada para a Edge Function
@@ -184,7 +190,7 @@ class UserCreationManager {
           console.log(`Conflict detected for ${userId}, checking if user was created...`);
           
           // Aguarda um pouco e verifica se foi criado
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise(resolve => setTimeout(resolve, 3000));
           
           const { data: userData } = await supabase
             .from('users')
@@ -207,7 +213,7 @@ class UserCreationManager {
       
       if (result.success) {
         // Verifica se o usuário foi realmente criado
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 2000));
         
         const { data: userData } = await supabase
           .from('users')
@@ -241,6 +247,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [error, setError] = useState<string | null>(null);
   const processedUsers = useRef<Set<string>>(new Set());
   const authStateProcessed = useRef<boolean>(false);
+  const userCreationInProgress = useRef<boolean>(false);
 
   useEffect(() => {
     let mounted = true;
@@ -270,16 +277,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const currentUser = session?.user ?? null;
       setUser(currentUser);
       
-      // Processa criação de usuário apenas uma vez por sessão
-      if (session?.access_token && currentUser && event === 'SIGNED_IN' && !authStateProcessed.current) {
+      // Processa criação de usuário apenas no SIGNED_IN e se não estiver em progresso
+      if (session?.access_token && currentUser && event === 'SIGNED_IN' && !userCreationInProgress.current) {
         
-        // Marca como processado imediatamente
-        authStateProcessed.current = true;
+        // Marca como em progresso imediatamente
+        userCreationInProgress.current = true;
         
-        // Verifica se já foi processado anteriormente
+        // Verifica se já foi processado anteriormente nesta sessão
         if (processedUsers.current.has(currentUser.id)) {
           console.log(`User already processed in this session: ${currentUser.id}`);
           setLoading(false);
+          userCreationInProgress.current = false;
           return;
         }
         
@@ -290,12 +298,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (userCreationManager.isUserCompleted(currentUser.id)) {
           console.log(`User already completed: ${currentUser.id}`);
           setLoading(false);
+          userCreationInProgress.current = false;
           return;
         }
         
         // Delay para garantir estabilidade da sessão
         setTimeout(async () => {
-          if (!mounted) return;
+          if (!mounted || !userCreationInProgress.current) return;
           
           try {
             console.log(`Processing user creation for: ${currentUser.id}`);
@@ -305,7 +314,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error(`Error ensuring complete user record: ${error.message}`);
             // Remove do processedUsers para permitir retry em futuras sessões
             processedUsers.current.delete(currentUser.id);
-            authStateProcessed.current = false;
+          } finally {
+            userCreationInProgress.current = false;
           }
         }, 2000);
       }
@@ -318,9 +328,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => {
       mounted = false;
       subscription.unsubscribe();
-      // Reset do estado quando o componente é desmontado
-      authStateProcessed.current = false;
-      processedUsers.current.clear();
     };
   }, []);
 
@@ -355,8 +362,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signIn = async (email: string, password: string) => {
     try {
-      // Reset do estado antes do login
+      // Reset de estados antes do login
       authStateProcessed.current = false;
+      userCreationInProgress.current = false;
       
       const { error } = await supabase.auth.signInWithPassword({
         email,
@@ -423,8 +431,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       setError(null);
       
-      // Reset do estado antes do login
+      // Reset de estados antes do login
       authStateProcessed.current = false;
+      userCreationInProgress.current = false;
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -450,7 +459,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       // Reset de todos os estados
       authStateProcessed.current = false;
+      userCreationInProgress.current = false;
       processedUsers.current.clear();
+      userCreationManager.reset();
       setUser(null);
       localStorage.removeItem('app-auth');
       
