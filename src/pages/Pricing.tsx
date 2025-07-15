@@ -177,6 +177,7 @@ const Pricing = () => {
               )}
               {/* This part is for the Stripe Pricing Table, which is rendered conditionally */}
               {/* It's important to keep this block as is, as the Stripe component handles its own UI */}
+              <button
                 onClick={handleSignIn}
                 className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
               >
@@ -199,11 +200,11 @@ const Pricing = () => {
                     </p>
                     <ul className="mt-6 space-y-4">
                       <li className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <span className="h-5 w-5 text-green-500">✓</span>
                         <span className="ml-3 text-gray-500">{t('home.pricing.free.features.0')}</span>
                       </li>
                       <li className="flex items-center">
-                        <CheckCircle className="h-5 w-5 text-green-500" />
+                        <span className="h-5 w-5 text-green-500">✓</span>
                         <span className="ml-3 text-gray-500">{t('home.pricing.free.features.1')}</span>
                       </li>
                     </ul>
@@ -219,10 +220,10 @@ const Pricing = () => {
             ) : (
               // Render the Stripe Pricing Table for other plans
               <stripe-pricing-table
-              pricing-table-id={PRICING_TABLE_ID}
-              publishable-key={STRIPE_PUBLISHABLE_KEY}
-              client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
-            />
+                pricing-table-id={PRICING_TABLE_ID}
+                publishable-key={STRIPE_PUBLISHABLE_KEY}
+                client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
+              />
             )
           )}
         </div>
