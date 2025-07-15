@@ -410,17 +410,23 @@ Deno.serve(async (req) => {
             console.log('Creating free subscription...');
             
             try {
+              // Garantir que o price_id correto seja usado
+              const freePriceId = 'price_1RIDwLGMh07VKLbnujKxoJmN';
+              console.log('Using free price ID:', freePriceId);
+              
               const subscriptionData = {
                 customer: stripeCustomerId,
                 items: [{ 
-                  price: PRICES.free,
+                  price: freePriceId,
                   quantity: 1
                 }],
-                trial_period_days: 36500, // 100 years trial for free plan
+                collection_method: 'charge_automatically',
+                payment_behavior: 'default_incomplete',
                 metadata: {
                   userId: user.id,
                   plan: 'free',
-                  created_by: 'smartcut_app'
+                  created_by: 'smartcut_app',
+                  auto_created: 'true'
                 }
               };
 
@@ -436,9 +442,25 @@ Deno.serve(async (req) => {
               console.error('Error creating free subscription:', subscriptionError);
               await logStripeEvent(supabaseAdmin, user.id, stripeCustomerId, 'create_subscription_error', null, null, subscriptionError);
               
-              // Não falha o processo se a subscription não for criada
-              // O usuário ainda pode usar o sistema sem subscription ativa
-              console.log('Continuing without subscription - user can still access free features');
+              // Tentar criar subscription mais simples se a primeira falhar
+              try {
+                console.log('Trying simpler subscription creation...');
+                const simpleSubscription = await stripe.subscriptions.create({
+                  customer: stripeCustomerId,
+                  items: [{ price: freePriceId }],
+                  metadata: {
+                    userId: user.id,
+                    plan: 'free'
+                  }
+                });
+                
+                subscriptionId = simpleSubscription.id;
+                existingSubscription = simpleSubscription;
+                console.log('Created simple free subscription:', simpleSubscription.id);
+              } catch (simpleError) {
+                console.error('Failed to create simple subscription:', simpleError);
+                // Continua sem subscription - usuário ainda pode usar recursos gratuitos
+              }
             }
           } else if (existingSubscription && existingSubscription.status === 'active') {
             console.log('User already has active subscription:', subscriptionId);
@@ -481,12 +503,16 @@ Deno.serve(async (req) => {
               // Se não temos os dados completos, buscar do Stripe
               const subscriptionData = existingSubscription.id ? existingSubscription : await stripe.subscriptions.retrieve(subscriptionId);
             
+              // Garantir que temos o price_id correto
+              const priceId = subscriptionData.items?.data?.[0]?.price?.id || 'price_1RIDwLGMh07VKLbnujKxoJmN';
+              console.log('Updating subscription with price_id:', priceId);
+              
               const { error: subscriptionUpdateError } = await supabaseAdmin
                 .from('stripe_subscriptions')
                 .upsert({
                   customer_id: stripeCustomerId,
                   subscription_id: subscriptionId,
-                  price_id: subscriptionData.items?.data?.[0]?.price?.id || PRICES.free,
+                  price_id: priceId,
                   status: subscriptionData.status,
                   current_period_start: subscriptionData.current_period_start,
                   current_period_end: subscriptionData.current_period_end,
@@ -498,16 +524,50 @@ Deno.serve(async (req) => {
 
               if (subscriptionUpdateError) {
                 console.error('Error updating subscription record:', subscriptionUpdateError);
-                // Log mas não falha o processo
+                // Tentar novamente com dados mínimos
+                const { error: retryError } = await supabaseAdmin
+                  .from('stripe_subscriptions')
+                  .upsert({
+                    customer_id: stripeCustomerId,
+                    subscription_id: subscriptionId,
+                    price_id: 'price_1RIDwLGMh07VKLbnujKxoJmN',
+                    status: 'active',
+                    updated_at: new Date().toISOString()
+                  }, {
+                    onConflict: 'customer_id'
+                  });
+                
+                if (retryError) {
+                  console.error('Retry also failed:', retryError);
+                }
               } else {
                 console.log('Successfully updated subscription record in database');
               }
             } catch (subscriptionUpdateError) {
               console.error('Error updating subscription record:', subscriptionUpdateError);
-              // Log mas não falha o processo
             }
           } else {
             console.log('No subscription to update in database');
+            
+            // Se chegamos aqui sem subscription, criar um registro básico
+            try {
+              const { error: basicSubError } = await supabaseAdmin
+                .from('stripe_subscriptions')
+                .upsert({
+                  customer_id: stripeCustomerId,
+                  price_id: 'price_1RIDwLGMh07VKLbnujKxoJmN',
+                  status: 'not_started',
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'customer_id'
+                });
+              
+              if (!basicSubError) {
+                console.log('Created basic subscription record');
+              }
+            } catch (basicError) {
+              console.error('Error creating basic subscription record:', basicError);
+            }
           }
 
           // STEP 13: Liberar lock e marcar como completo

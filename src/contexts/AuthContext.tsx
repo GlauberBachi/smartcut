@@ -279,6 +279,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           
           try {
             console.log(`Processing user creation for: ${currentUser.id}`);
+            console.log(`User email: ${currentUser.email}`);
             await userCreationManager.ensureUserComplete(session.access_token, currentUser.id);
             console.log(`User creation completed for: ${currentUser.id}`);
           } catch (error) {
@@ -288,7 +289,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } finally {
             userCreationInProgress.current = false;
           }
-        }, 1000); // Reduzido para 1 segundo
+        }, 2000); // Aumentado para 2 segundos para dar mais tempo
       }
       
       if (mounted) {
