@@ -43,8 +43,14 @@ const Pricing = () => {
           .maybeSingle();
 
         console.log('Stripe subscription data:', stripeData);
+        console.log('Stripe subscription error:', stripeError);
 
-        if (!stripeError && stripeData && stripeData.subscription_status === 'active') {
+        if (!stripeError && stripeData) {
+          console.log('Found Stripe subscription data:', {
+            price_id: stripeData.price_id,
+            status: stripeData.subscription_status
+          });
+          
           // Map Stripe price_id to plan name
           const planMap: { [key: string]: string } = {
             'price_1RIDwLGMh07VKLbnujKxoJmN': 'free',
@@ -54,8 +60,69 @@ const Pricing = () => {
           
           const mappedPlan = planMap[stripeData.price_id] || 'free';
           console.log('Mapped plan from Stripe:', mappedPlan, 'for price_id:', stripeData.price_id);
+          console.log('Subscription status:', stripeData.subscription_status);
+          
+          // Accept both 'active' and 'not_started' status for free plan
+          if (stripeData.subscription_status === 'active' || 
+              (mappedPlan === 'free' && ['not_started', 'incomplete'].includes(stripeData.subscription_status))) {
+            console.log('Setting plan to:', mappedPlan);
           setCurrentPlan(mappedPlan);
+            setLoading(false);
+            return;
+          } else {
+            console.log('Stripe subscription not active, status:', stripeData.subscription_status);
+          }
+        }
+        
+        // If no valid Stripe subscription, check regular subscriptions
+        console.log('No active Stripe subscription, checking regular subscriptions...');
+        
+        const { data: subscription, error: subscriptionError } = await supabase
+          .from('subscriptions')
+          .select('plan')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        console.log('Regular subscription data:', subscription);
+        console.log('Regular subscription error:', subscriptionError);
+
+        if (subscriptionError) {
+          console.error('Error loading subscription:', subscriptionError);
+          setCurrentPlan('free'); // Default to free on error
         } else {
+          const plan = subscription?.plan || 'free';
+          console.log('Setting plan from regular subscription:', plan);
+          setCurrentPlan(plan);
+        }
+        
+      } catch (error) {
+        console.error('Error loading subscription:', error);
+        setCurrentPlan('free'); // Default to free on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadUserPlan();
+  }, [user]);
+
+  // Debug: Log current plan changes
+  useEffect(() => {
+    console.log('Current plan changed to:', currentPlan);
+  }, [currentPlan]);
+
+  const getPlanBadge = (plan: string) => {
+    switch (plan) {
+      case 'monthly':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Plano Ativo: Mensal</span>;
+      case 'yearly':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Plano Ativo: Anual</span>;
+      case 'free':
+        return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Plano Ativo: Gratuito</span>;
+      default:
+        return null;
+    }
+  };
           // Fallback to regular subscriptions table
           console.log('No active Stripe subscription, checking regular subscriptions...');
           
@@ -117,6 +184,11 @@ const Pricing = () => {
           <p className="mt-4 text-xl text-gray-600">
             {t('pricing.subtitle')}
           </p>
+          {user && (
+            <div className="mt-4">
+              {getPlanBadge(currentPlan)}
+            </div>
+          )}
         </div>
 
         <div className="mt-12">
