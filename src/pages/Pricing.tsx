@@ -66,7 +66,7 @@ const Pricing = () => {
           if (stripeData.subscription_status === 'active' || 
               (mappedPlan === 'free' && ['not_started', 'incomplete'].includes(stripeData.subscription_status))) {
             console.log('Setting plan to:', mappedPlan);
-          setCurrentPlan(mappedPlan);
+            setCurrentPlan(mappedPlan);
             setLoading(false);
             return;
           } else {
@@ -123,33 +123,6 @@ const Pricing = () => {
         return null;
     }
   };
-          // Fallback to regular subscriptions table
-          console.log('No active Stripe subscription, checking regular subscriptions...');
-          
-          const { data: subscription, error: subscriptionError } = await supabase
-            .from('subscriptions')
-            .select('plan')
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (subscriptionError) {
-            console.error('Error loading subscription:', subscriptionError);
-            setCurrentPlan('free'); // Default to free on error
-          } else {
-            console.log('Regular subscription data:', subscription);
-            setCurrentPlan(subscription?.plan || 'free');
-          }
-        }
-      } catch (error) {
-        console.error('Error loading subscription:', error);
-        setCurrentPlan('free'); // Default to free on error
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadUserPlan();
-  }, [user]);
 
   if (loading) {
     console.log('Pricing component is loading...');
