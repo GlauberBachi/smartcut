@@ -112,7 +112,7 @@ const Pricing = () => {
             <stripe-pricing-table
               pricing-table-id={PRICING_TABLE_ID}
               publishable-key={STRIPE_PUBLISHABLE_KEY}
-              client-reference-id={user.id + ':' + currentPlan}
+              client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
             />
           )}
         </div>
