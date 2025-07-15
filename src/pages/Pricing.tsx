@@ -35,23 +35,47 @@ const Pricing = () => {
 
       console.log('Loading user plan for:', user.email);
       try {
-        // Get subscription data from the subscriptions table
-        const { data: subscription, error: subscriptionError } = await supabase
-          .from('subscriptions')
-          .select('plan')
-          .eq('user_id', user.id)
+        // First check Stripe subscriptions for active plans
+        const { data: stripeData, error: stripeError } = await supabase
+          .from('stripe_user_subscriptions')
+          .select('price_id, subscription_status')
+          .limit(1)
           .maybeSingle();
 
-        if (subscriptionError) {
-          console.error('Error loading subscription:', subscriptionError);
-          setLoading(false);
-          return;
-        }
+        console.log('Stripe subscription data:', stripeData);
 
-        console.log('Current plan loaded:', subscription?.plan || 'free');
-        setCurrentPlan(subscription?.plan || 'free');
+        if (!stripeError && stripeData && stripeData.subscription_status === 'active') {
+          // Map Stripe price_id to plan name
+          const planMap: { [key: string]: string } = {
+            'price_1RIDwLGMh07VKLbnujKxoJmN': 'free',
+            'price_1RICRBGMh07VKLbntwSXXPdM': 'monthly',
+            'price_1RICWFGMh07VKLbnLsU1jkVZ': 'yearly'
+          };
+          
+          const mappedPlan = planMap[stripeData.price_id] || 'free';
+          console.log('Mapped plan from Stripe:', mappedPlan, 'for price_id:', stripeData.price_id);
+          setCurrentPlan(mappedPlan);
+        } else {
+          // Fallback to regular subscriptions table
+          console.log('No active Stripe subscription, checking regular subscriptions...');
+          
+          const { data: subscription, error: subscriptionError } = await supabase
+            .from('subscriptions')
+            .select('plan')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (subscriptionError) {
+            console.error('Error loading subscription:', subscriptionError);
+            setCurrentPlan('free'); // Default to free on error
+          } else {
+            console.log('Regular subscription data:', subscription);
+            setCurrentPlan(subscription?.plan || 'free');
+          }
+        }
       } catch (error) {
         console.error('Error loading subscription:', error);
+        setCurrentPlan('free'); // Default to free on error
       } finally {
         setLoading(false);
       }
