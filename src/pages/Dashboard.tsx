@@ -16,6 +16,8 @@ const Dashboard = () => {
       if (!user) return;
 
       try {
+        console.log('Fetching subscription plan for user:', user.id);
+        
         const { data: stripeData, error: stripeError } = await supabase
           .from('stripe_user_subscriptions')
           .select('price_id, subscription_status')
@@ -23,11 +25,16 @@ const Dashboard = () => {
           .maybeSingle();
 
         if (stripeError) {
+          console.error('Error fetching Stripe subscription:', stripeError);
           throw stripeError;
         }
 
+        console.log('Stripe subscription data:', stripeData);
+
         // If no Stripe subscription found or it's not active, check regular subscriptions
         if (!stripeData || stripeData.subscription_status !== 'active') {
+          console.log('No active Stripe subscription, checking regular subscriptions...');
+          
           const { data: subData, error: subError } = await supabase
             .from('subscriptions')
             .select('plan')
@@ -36,18 +43,26 @@ const Dashboard = () => {
             .maybeSingle();
 
           if (subError) throw subError;
+          
+          console.log('Regular subscription data:', subData);
           setPlan(subData?.plan || 'free');
         } else {
           // Map Stripe price_id to plan name
           const planMap: { [key: string]: string } = {
+            'price_1RIDwLGMh07VKLbnujKxoJmN': 'free',
             'price_1RICRBGMh07VKLbntwSXXPdM': 'monthly',
             'price_1RICWFGMh07VKLbnLsU1jkVZ': 'yearly'
           };
-          setPlan(planMap[stripeData.price_id] || 'free');
+          
+          const mappedPlan = planMap[stripeData.price_id] || 'free';
+          console.log('Mapped plan from Stripe:', mappedPlan, 'for price_id:', stripeData.price_id);
+          setPlan(mappedPlan);
         }
       } catch (err: any) {
         console.error('Error fetching subscription:', err);
         setError(err.message);
+        // Fallback to free plan on error
+        setPlan('free');
       } finally {
         setLoading(false);
       }

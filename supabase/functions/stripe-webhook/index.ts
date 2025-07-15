@@ -143,13 +143,13 @@ async function syncCustomerFromStripe(customerId: string) {
       expand: ['data.default_payment_method'],
     });
 
-    // TODO verify if needed
+    // Handle case where customer has no subscriptions
     if (subscriptions.data.length === 0) {
       console.info(`No active subscriptions found for customer: ${customerId}`);
       const { error: noSubError } = await supabase.from('stripe_subscriptions').upsert(
         {
           customer_id: customerId,
-          subscription_status: 'not_started',
+          status: 'not_started',
         },
         {
           onConflict: 'customer_id',
@@ -160,11 +160,17 @@ async function syncCustomerFromStripe(customerId: string) {
         console.error('Error updating subscription status:', noSubError);
         throw new Error('Failed to update subscription status in database');
       }
+      return;
     }
 
     // assumes that a customer can only have a single subscription
     const subscription = subscriptions.data[0];
 
+    // Validate subscription data
+    if (!subscription.id || !subscription.items?.data?.[0]?.price?.id) {
+      console.error('Invalid subscription data received from Stripe:', subscription.id);
+      return;
+    }
     // store subscription state
     const { error: subError } = await supabase.from('stripe_subscriptions').upsert(
       {
@@ -181,6 +187,7 @@ async function syncCustomerFromStripe(customerId: string) {
             }
           : {}),
         status: subscription.status,
+        updated_at: new Date().toISOString(),
       },
       {
         onConflict: 'customer_id',

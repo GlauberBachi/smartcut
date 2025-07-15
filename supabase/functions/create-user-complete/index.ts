@@ -387,43 +387,63 @@ Deno.serve(async (req) => {
 
           // STEP 8: Verificar se já existe subscription ativa
           let subscriptionId: string | null = null;
+          let existingSubscription: any = null;
           
           try {
             const subscriptions = await stripe.subscriptions.list({
               customer: stripeCustomerId,
-              status: 'active',
+              status: 'all',
               limit: 1
             });
 
             if (subscriptions.data.length > 0) {
-              subscriptionId = subscriptions.data[0].id;
-              console.log('Found existing active subscription:', subscriptionId);
+              existingSubscription = subscriptions.data[0];
+              subscriptionId = existingSubscription.id;
+              console.log('Found existing subscription:', subscriptionId, 'status:', existingSubscription.status);
             }
           } catch (subError) {
             console.log('Error checking existing subscriptions:', subError.message);
           }
 
           // STEP 9: Criar subscription se não existir
-          if (!subscriptionId) {
+          if (!subscriptionId || (existingSubscription && existingSubscription.status === 'canceled')) {
             console.log('Creating free subscription...');
             
-            const subscription = await stripe.subscriptions.create({
-              customer: stripeCustomerId,
-              items: [{ 
-                price: PRICES.free,
-                quantity: 1
-              }],
-              trial_period_days: 36500, // 100 years trial for free plan
-              metadata: {
-                userId: user.id,
-                plan: 'free'
-              }
-            });
+            try {
+              const subscriptionData = {
+                customer: stripeCustomerId,
+                items: [{ 
+                  price: PRICES.free,
+                  quantity: 1
+                }],
+                trial_period_days: 36500, // 100 years trial for free plan
+                metadata: {
+                  userId: user.id,
+                  plan: 'free',
+                  created_by: 'smartcut_app'
+                }
+              };
 
-            subscriptionId = subscription.id;
-            console.log('Created free subscription:', subscription.id);
-            await logStripeEvent(supabaseAdmin, user.id, stripeCustomerId, 'create_subscription_response', null, subscription);
+              await logStripeEvent(supabaseAdmin, user.id, stripeCustomerId, 'create_subscription_request', subscriptionData);
+
+              const subscription = await stripe.subscriptions.create(subscriptionData);
+
+              subscriptionId = subscription.id;
+              existingSubscription = subscription;
+              console.log('Created free subscription:', subscription.id);
+              await logStripeEvent(supabaseAdmin, user.id, stripeCustomerId, 'create_subscription_response', null, subscription);
+            } catch (subscriptionError) {
+              console.error('Error creating free subscription:', subscriptionError);
+              await logStripeEvent(supabaseAdmin, user.id, stripeCustomerId, 'create_subscription_error', null, null, subscriptionError);
+              
+              // Não falha o processo se a subscription não for criada
+              // O usuário ainda pode usar o sistema sem subscription ativa
+              console.log('Continuing without subscription - user can still access free features');
+            }
+          } else if (existingSubscription && existingSubscription.status === 'active') {
+            console.log('User already has active subscription:', subscriptionId);
           }
+
 
           // STEP 10: Chamar função RPC para criar/atualizar registros locais
           console.log('Calling create_user_complete RPC function...');
@@ -456,27 +476,38 @@ Deno.serve(async (req) => {
           }
 
           // STEP 12: Atualizar subscription record
-          if (subscriptionId) {
-            const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          if (subscriptionId && existingSubscription) {
+            try {
+              // Se não temos os dados completos, buscar do Stripe
+              const subscriptionData = existingSubscription.id ? existingSubscription : await stripe.subscriptions.retrieve(subscriptionId);
             
-            const { error: subscriptionUpdateError } = await supabaseAdmin
-              .from('stripe_subscriptions')
-              .upsert({
-                customer_id: stripeCustomerId,
-                subscription_id: subscriptionId,
-                price_id: PRICES.free,
-                status: subscription.status,
-                current_period_start: subscription.current_period_start,
-                current_period_end: subscription.current_period_end,
-                cancel_at_period_end: subscription.cancel_at_period_end,
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'customer_id'
-              });
+              const { error: subscriptionUpdateError } = await supabaseAdmin
+                .from('stripe_subscriptions')
+                .upsert({
+                  customer_id: stripeCustomerId,
+                  subscription_id: subscriptionId,
+                  price_id: subscriptionData.items?.data?.[0]?.price?.id || PRICES.free,
+                  status: subscriptionData.status,
+                  current_period_start: subscriptionData.current_period_start,
+                  current_period_end: subscriptionData.current_period_end,
+                  cancel_at_period_end: subscriptionData.cancel_at_period_end,
+                  updated_at: new Date().toISOString()
+                }, {
+                  onConflict: 'customer_id'
+                });
 
-            if (subscriptionUpdateError) {
+              if (subscriptionUpdateError) {
+                console.error('Error updating subscription record:', subscriptionUpdateError);
+                // Log mas não falha o processo
+              } else {
+                console.log('Successfully updated subscription record in database');
+              }
+            } catch (subscriptionUpdateError) {
               console.error('Error updating subscription record:', subscriptionUpdateError);
+              // Log mas não falha o processo
             }
+          } else {
+            console.log('No subscription to update in database');
           }
 
           // STEP 13: Liberar lock e marcar como completo
