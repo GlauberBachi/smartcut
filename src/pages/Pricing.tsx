@@ -12,6 +12,7 @@ declare global {
         'pricing-table-id': string;
         'publishable-key': string;
         'client-reference-id'?: string;
+        'customer-id'?: string;
       }, HTMLElement>;
     }
   }
@@ -22,6 +23,7 @@ const Pricing = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [currentPlan, setCurrentPlan] = useState<string>('free');
+  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -35,6 +37,21 @@ const Pricing = () => {
 
       console.log('Loading user plan for:', user.email);
       try {
+        // First get the Stripe customer ID
+        const { data: customerData, error: customerError } = await supabase
+          .from('stripe_customers')
+          .select('customer_id')
+          .eq('user_id', user.id)
+          .is('deleted_at', null)
+          .maybeSingle();
+
+        if (customerError) {
+          console.error('Error loading customer:', customerError);
+        } else if (customerData?.customer_id) {
+          console.log('Found Stripe customer ID:', customerData.customer_id);
+          setStripeCustomerId(customerData.customer_id);
+        }
+
         // First check Stripe subscriptions for active plans
         const { data: stripeData, error: stripeError } = await supabase
           .from('stripe_user_subscriptions')
@@ -109,6 +126,7 @@ const Pricing = () => {
   // Debug: Log current plan changes
   useEffect(() => {
     console.log('Current plan changed to:', currentPlan);
+    console.log('Stripe customer ID:', stripeCustomerId);
   }, [currentPlan]);
 
   const getPlanBadge = (plan: string) => {
@@ -149,6 +167,8 @@ const Pricing = () => {
   };
 
   console.log('Rendering Pricing component with user:', user?.email, 'plan:', currentPlan);
+  console.log('Stripe customer ID for pricing table:', stripeCustomerId);
+  
   return (
     <div className="bg-gray-50 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -178,13 +198,23 @@ const Pricing = () => {
               </button>
             </div>
           ) : (
-            // Always render the Stripe Pricing Table for logged-in users
-            // This allows users to see all plans and upgrade/downgrade as needed
-            <stripe-pricing-table
-              pricing-table-id={PRICING_TABLE_ID}
-              publishable-key={STRIPE_PUBLISHABLE_KEY}
-              client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
-            />
+            <div>
+              {/* Debug info - remove in production */}
+              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
+                <h4 className="text-sm font-medium text-yellow-800">Debug Info:</h4>
+                <p className="text-sm text-yellow-700">Current Plan: {currentPlan}</p>
+                <p className="text-sm text-yellow-700">Stripe Customer ID: {stripeCustomerId || 'Not found'}</p>
+                <p className="text-sm text-yellow-700">User ID: {user.id}</p>
+              </div>
+              
+              {/* Always render the Stripe Pricing Table for logged-in users */}
+              <stripe-pricing-table
+                pricing-table-id={PRICING_TABLE_ID}
+                publishable-key={STRIPE_PUBLISHABLE_KEY}
+                client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
+                {...(stripeCustomerId && { 'customer-id': stripeCustomerId })}
+              />
+            </div>
           )}
         </div>
       </div>
