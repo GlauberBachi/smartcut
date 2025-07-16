@@ -2,21 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { PRICING_TABLE_ID, STRIPE_PUBLISHABLE_KEY } from '../stripe-config';
+import { redirectToCheckout } from '../lib/stripe';
 import { supabase } from '../lib/supabaseClient';
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'stripe-pricing-table': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement> & {
-        'pricing-table-id': string;
-        'publishable-key': string;
-        'client-reference-id'?: string;
-        'customer-id'?: string;
-      }, HTMLElement>;
-    }
-  }
-}
+import { Check, Crown, Zap } from 'lucide-react';
 
 const Pricing = () => {
   const { user } = useAuth();
@@ -25,6 +13,7 @@ const Pricing = () => {
   const [currentPlan, setCurrentPlan] = useState<string>('free');
   const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [subscribing, setSubscribing] = useState<string | null>(null);
 
   useEffect(() => {
     console.log('Pricing component mounted');
@@ -123,11 +112,23 @@ const Pricing = () => {
     loadUserPlan();
   }, [user]);
 
-  // Debug: Log current plan changes
-  useEffect(() => {
-    console.log('Current plan changed to:', currentPlan);
-    console.log('Stripe customer ID:', stripeCustomerId);
-  }, [currentPlan]);
+  const handleSubscribe = async (planType: 'monthly' | 'yearly') => {
+    if (!user) {
+      navigate('/?auth=signin');
+      return;
+    }
+
+    setSubscribing(planType);
+    
+    try {
+      await redirectToCheckout('subscription');
+    } catch (error: any) {
+      console.error('Error redirecting to checkout:', error);
+      alert('Erro ao processar pagamento: ' + error.message);
+    } finally {
+      setSubscribing(null);
+    }
+  };
 
   const getPlanBadge = (plan: string) => {
     switch (plan) {
@@ -140,6 +141,35 @@ const Pricing = () => {
       default:
         return null;
     }
+  };
+
+  const getButtonText = (planType: string) => {
+    if (currentPlan === planType) {
+      return 'Plano Atual';
+    }
+    
+    switch (planType) {
+      case 'free':
+        return 'Gratuito';
+      case 'monthly':
+        return currentPlan === 'free' ? 'Assinar Mensal' : 'Mudar para Mensal';
+      case 'yearly':
+        return currentPlan === 'free' ? 'Assinar Anual' : 'Mudar para Anual';
+      default:
+        return 'Selecionar';
+    }
+  };
+
+  const getButtonStyle = (planType: string) => {
+    if (currentPlan === planType) {
+      return 'w-full py-3 px-4 border-2 border-green-500 rounded-lg text-sm font-medium text-green-700 bg-green-50 cursor-not-allowed';
+    }
+    
+    if (planType === 'free') {
+      return 'w-full py-3 px-4 border-2 border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors duration-200';
+    }
+    
+    return 'w-full py-3 px-4 border border-transparent rounded-lg text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200';
   };
 
   if (loading) {
@@ -167,7 +197,6 @@ const Pricing = () => {
   };
 
   console.log('Rendering Pricing component with user:', user?.email, 'plan:', currentPlan);
-  console.log('Stripe customer ID for pricing table:', stripeCustomerId);
   
   return (
     <div className="bg-gray-50 py-12">
@@ -198,25 +227,170 @@ const Pricing = () => {
               </button>
             </div>
           ) : (
-            <div>
-              {/* Debug info - remove in production */}
-              <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-md">
-                <h4 className="text-sm font-medium text-yellow-800">Debug Info:</h4>
-                <p className="text-sm text-yellow-700">Current Plan: {currentPlan}</p>
-                <p className="text-sm text-yellow-700">Stripe Customer ID: {stripeCustomerId || 'Not found'}</p>
-                <p className="text-sm text-yellow-700">User ID: {user.id}</p>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {/* Plano Gratuito */}
+              <div className={`bg-white rounded-lg shadow-lg divide-y divide-gray-200 ${currentPlan === 'free' ? 'ring-2 ring-green-500' : ''}`}>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-semibold text-gray-900">Gratuito</h3>
+                    {currentPlan === 'free' && (
+                      <Crown className="h-6 w-6 text-green-500" />
+                    )}
+                  </div>
+                  <p className="text-gray-500 mb-4">Para pequenos projetos</p>
+                  <p className="mb-8">
+                    <span className="text-4xl font-extrabold text-gray-900">R$ 0</span>
+                    <span className="text-base font-medium text-gray-500">/mês</span>
+                  </p>
+                  <ul className="space-y-4 mb-8">
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Até 5 projetos por mês</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Recursos básicos</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Suporte por email</span>
+                    </li>
+                  </ul>
+                  <button
+                    disabled={currentPlan === 'free'}
+                    className={getButtonStyle('free')}
+                  >
+                    {getButtonText('free')}
+                  </button>
+                </div>
               </div>
-              
-              {/* Always render the Stripe Pricing Table for logged-in users */}
-              <stripe-pricing-table
-                pricing-table-id={PRICING_TABLE_ID}
-                publishable-key={STRIPE_PUBLISHABLE_KEY}
-                client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
-                {...(stripeCustomerId && { 'customer-id': stripeCustomerId })}
-              />
+
+              {/* Plano Mensal */}
+              <div className={`bg-white rounded-lg shadow-lg divide-y divide-gray-200 ${currentPlan === 'monthly' ? 'ring-2 ring-green-500' : 'border-2 border-primary-500'}`}>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-semibold text-gray-900">Mensal</h3>
+                    <div className="flex items-center space-x-2">
+                      {currentPlan === 'monthly' ? (
+                        <Crown className="h-6 w-6 text-green-500" />
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-100 text-primary-800">
+                          Mais Popular
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-gray-500 mb-4">Para empresas em crescimento</p>
+                  <p className="mb-8">
+                    <span className="text-4xl font-extrabold text-gray-900">R$ 97</span>
+                    <span className="text-base font-medium text-gray-500">/mês</span>
+                  </p>
+                  <ul className="space-y-4 mb-8">
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Projetos ilimitados</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Suporte prioritário</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Relatórios avançados</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Exportação de dados</span>
+                    </li>
+                  </ul>
+                  <button
+                    onClick={() => handleSubscribe('monthly')}
+                    disabled={currentPlan === 'monthly' || subscribing === 'monthly'}
+                    className={getButtonStyle('monthly')}
+                  >
+                    {subscribing === 'monthly' ? 'Processando...' : getButtonText('monthly')}
+                  </button>
+                </div>
+              </div>
+
+              {/* Plano Anual */}
+              <div className={`bg-white rounded-lg shadow-lg divide-y divide-gray-200 ${currentPlan === 'yearly' ? 'ring-2 ring-green-500' : ''}`}>
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-2xl font-semibold text-gray-900">Anual</h3>
+                    <div className="flex items-center space-x-2">
+                      {currentPlan === 'yearly' ? (
+                        <Crown className="h-6 w-6 text-green-500" />
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Economia de 16%
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-gray-500 mb-4">Para grandes operações</p>
+                  <p className="mb-2">
+                    <span className="text-4xl font-extrabold text-gray-900">R$ 997</span>
+                    <span className="text-base font-medium text-gray-500">/ano</span>
+                  </p>
+                  <p className="text-sm text-gray-500 mb-6">
+                    <span className="line-through">R$ 1.164</span> - Economize R$ 167
+                  </p>
+                  <ul className="space-y-4 mb-8">
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Tudo do plano Mensal</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">API para integração</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Check className="h-5 w-5 text-green-500 mr-3" />
+                      <span className="text-gray-500">Suporte 24/7</span>
+                    </li>
+                    <li className="flex items-center">
+                      <Zap className="h-5 w-5 text-yellow-500 mr-3" />
+                      <span className="text-gray-500">Recursos exclusivos</span>
+                    </li>
+                  </ul>
+                  <button
+                    onClick={() => handleSubscribe('yearly')}
+                    disabled={currentPlan === 'yearly' || subscribing === 'yearly'}
+                    className={getButtonStyle('yearly')}
+                  >
+                    {subscribing === 'yearly' ? 'Processando...' : getButtonText('yearly')}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Garantia e Informações Adicionais */}
+        {user && (
+          <div className="mt-12 text-center">
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                💳 Pagamento Seguro & Garantia
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
+                <div>
+                  <strong>🔒 100% Seguro</strong>
+                  <p>Pagamentos processados pelo Stripe com criptografia SSL</p>
+                </div>
+                <div>
+                  <strong>↩️ Cancelamento Fácil</strong>
+                  <p>Cancele a qualquer momento sem taxas adicionais</p>
+                </div>
+                <div>
+                  <strong>🎯 Suporte Dedicado</strong>
+                  <p>Nossa equipe está pronta para ajudar você</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
