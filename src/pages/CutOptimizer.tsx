@@ -487,5 +487,11 @@ const CutOptimizer = () => {
                 </button>
               )}
             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export default CutOptimizer;
