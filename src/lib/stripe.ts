@@ -1,6 +1,6 @@
 import { supabase } from './supabaseClient';
 
-export async function createCheckoutSession(mode: 'payment' | 'subscription', locale = 'pt-BR') {
+export async function createCheckoutSession(mode: 'payment' | 'subscription', locale = 'pt-BR', priceId?: string) {
   // First check if we have a session
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
@@ -21,19 +21,25 @@ export async function createCheckoutSession(mode: 'payment' | 'subscription', lo
     throw new Error('Your session has expired. Please sign in again.');
   }
 
+  const requestBody: any = {
+    success_url: `${window.location.origin}/success`,
+    cancel_url: `${window.location.origin}/pricing`,
+    mode: mode,
+    locale: locale,
+    allow_promotion_codes: true,
+  };
+
+  // Add price_id if provided
+  if (priceId) {
+    requestBody.price_id = priceId;
+  }
   const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/stripe-checkout`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${session.access_token}`,
     },
-    body: JSON.stringify({
-      success_url: `${window.location.origin}/success`,
-      cancel_url: `${window.location.origin}/pricing`,
-      mode: mode,
-      locale: locale,
-      allow_promotion_codes: true,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
@@ -45,9 +51,9 @@ export async function createCheckoutSession(mode: 'payment' | 'subscription', lo
   return url;
 }
 
-export async function redirectToCheckout(mode: 'payment' | 'subscription') {
+export async function redirectToCheckout(mode: 'payment' | 'subscription', priceId?: string) {
   try {
-    const url = await createCheckoutSession(mode, 'pt-BR');
+    const url = await createCheckoutSession(mode, 'pt-BR', priceId);
     window.location.href = url;
   } catch (error) {
     console.error('Error redirecting to checkout:', error);

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { redirectToCheckout } from '../lib/stripe';
+import { createCheckoutSession } from '../lib/stripe';
 import { supabase } from '../lib/supabaseClient';
 import { Check, Crown, Zap } from 'lucide-react';
 
@@ -121,7 +121,17 @@ const Pricing = () => {
     setSubscribing(planType);
     
     try {
-      await redirectToCheckout('subscription');
+      // Map plan type to correct price ID
+      const priceIds = {
+        monthly: 'price_1RICRBGMh07VKLbntwSXXPdM',
+        yearly: 'price_1RICWFGMh07VKLbnLsU1jkVZ'
+      };
+      
+      const priceId = priceIds[planType];
+      
+      // Create checkout session with specific price ID
+      const url = await createCheckoutSession('subscription', 'pt-BR', priceId);
+      window.location.href = url;
     } catch (error: any) {
       console.error('Error redirecting to checkout:', error);
       alert('Erro ao processar pagamento: ' + error.message);
