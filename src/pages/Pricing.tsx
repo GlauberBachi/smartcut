@@ -170,13 +170,6 @@ const Pricing = () => {
               <p className="text-lg text-gray-600 mb-6">
                 {t('pricing.loginToSubscribe')}
               </p>
-              {user && currentPlan && (
-                <div className="mt-4">
-                  {getPlanBadge(currentPlan)}
-                </div>
-              )}
-              {/* This part is for the Stripe Pricing Table, which is rendered conditionally */}
-              {/* It's important to keep this block as is, as the Stripe component handles its own UI */}
               <button
                 onClick={handleSignIn}
                 className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700"
@@ -185,46 +178,13 @@ const Pricing = () => {
               </button>
             </div>
           ) : (
-            // Conditionally render the Stripe Pricing Table or a custom UI for the Free plan
-            // If the user is on the free plan, we want to show a custom button for it
-            currentPlan === 'free' ? (
-              // Custom UI for the Free plan when it's the current plan
-              <div className="flex justify-center">
-                <div className="bg-white rounded-lg shadow-lg divide-y divide-gray-200 w-96">
-                  <div className="p-6">
-                    <h3 className="text-2xl font-semibold text-gray-900">{t('home.pricing.free.title')}</h3>
-                    <p className="mt-4 text-gray-500">{t('home.pricing.free.description')}</p>
-                    <p className="mt-8">
-                      <span className="text-4xl font-extrabold text-gray-900">{t('home.pricing.free.price')}</span>
-                      <span className="text-base font-medium text-gray-500">{t('home.pricing.free.period')}</span>
-                    </p>
-                    <ul className="mt-6 space-y-4">
-                      <li className="flex items-center">
-                        <span className="h-5 w-5 text-green-500">✓</span>
-                        <span className="ml-3 text-gray-500">{t('home.pricing.free.features.0')}</span>
-                      </li>
-                      <li className="flex items-center">
-                        <span className="h-5 w-5 text-green-500">✓</span>
-                        <span className="ml-3 text-gray-500">{t('home.pricing.free.features.1')}</span>
-                      </li>
-                    </ul>
-                    <button
-                      disabled
-                      className="mt-8 w-full py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gray-400 cursor-not-allowed"
-                    >
-                      Plano Atual
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Render the Stripe Pricing Table for other plans
-              <stripe-pricing-table
-                pricing-table-id={PRICING_TABLE_ID}
-                publishable-key={STRIPE_PUBLISHABLE_KEY}
-                client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
-              />
-            )
+            // Always render the Stripe Pricing Table for logged-in users
+            // This allows users to see all plans and upgrade/downgrade as needed
+            <stripe-pricing-table
+              pricing-table-id={PRICING_TABLE_ID}
+              publishable-key={STRIPE_PUBLISHABLE_KEY}
+              client-reference-id={user.id.replace(/[^a-zA-Z0-9\s\-_]/g, '_')}
+            />
           )}
         </div>
       </div>
