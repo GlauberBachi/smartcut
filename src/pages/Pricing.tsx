@@ -386,6 +386,11 @@ const Pricing = () => {
                 <div>
                   <strong>🎯 Suporte Dedicado</strong>
                   <p>Nossa equipe está pronta para ajudar você</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
