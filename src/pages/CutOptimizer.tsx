@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 import { format } from 'date-fns';
 import { ptBR, enUS, es, fr, it, de } from 'date-fns/locale';
 import { useTranslation } from 'react-i18next';
+import { useEffect } from 'react';
 
 const CutOptimizer = () => {
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
+  const [userPlan, setUserPlan] = useState<string>('free');
+  const [planLoading, setPlanLoading] = useState(true);
   
   const getLocale = () => {
     switch (i18n.language) {
@@ -42,6 +46,52 @@ const CutOptimizer = () => {
   ]);
   const [result, setResult] = useState<any[]>([]);
 
+  useEffect(() => {
+    const loadUserPlan = async () => {
+      if (!user) {
+        setPlanLoading(false);
+        return;
+      }
+
+      try {
+        // First check Stripe subscriptions for active plans
+        const { data: stripeData, error: stripeError } = await supabase
+          .from('stripe_user_subscriptions')
+          .select('price_id, subscription_status')
+          .limit(1)
+          .maybeSingle();
+
+        if (!stripeError && stripeData && stripeData.subscription_status === 'active') {
+          // Map Stripe price_id to plan name
+          const planMap: { [key: string]: string } = {
+            'price_1RIDwLGMh07VKLbnujKxoJmN': 'free',
+            'price_1RICRBGMh07VKLbntwSXXPdM': 'monthly',
+            'price_1RICWFGMh07VKLbnLsU1jkVZ': 'yearly'
+          };
+          
+          const mappedPlan = planMap[stripeData.price_id] || 'free';
+          setUserPlan(mappedPlan);
+        } else {
+          // If no valid Stripe subscription, check regular subscriptions
+          const { data: subscription } = await supabase
+            .from('subscriptions')
+            .select('plan')
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          setUserPlan(subscription?.plan || 'free');
+        }
+      } catch (error) {
+        console.error('Error loading user plan:', error);
+        setUserPlan('free'); // Default to free on error
+      } finally {
+        setPlanLoading(false);
+      }
+    };
+
+    loadUserPlan();
+  }, [user]);
+
   const formatDecimal = (value: string) => {
     const num = parseFloat(value);
     return isNaN(num) ? '' : num.toFixed(2);
@@ -57,6 +107,10 @@ const CutOptimizer = () => {
   };
 
   const addCut = () => {
+    // Check if user is on free plan and already has 5 cuts
+    if (userPlan === 'free' && cuts.length >= 5) {
+      return; // Don't add more cuts for free users
+    }
     setCuts([...cuts, { quantity: '', length: '', description: '' }]);
   };
 
@@ -409,11 +463,29 @@ const CutOptimizer = () => {
                 </div>
               ))}
             </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
+            
+            {/* Add Cut Button or Upgrade Message */}
+            <div className="mt-4">
+              {userPlan === 'free' && cuts.length >= 5 ? (
+                <div className="text-center py-4">
+                  <p className="text-gray-600 mb-2">
+                    Faça o upgrade do seu plano para inserir mais cortes
+                  </p>
+                  <button
+                    onClick={() => window.location.href = '/pricing'}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+                  >
+                    Fazer Upgrade
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={addCut}
+                  className="text-primary-600 hover:text-primary-700"
+                >
+                  + {t('cutOptimizer.cuts.add')}
+                </button>
+              )}
+            </div>
 
 export default CutOptimizer;
