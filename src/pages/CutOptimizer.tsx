@@ -386,12 +386,29 @@ const CutOptimizer = () => {
               </div>
             ))}
           </div>
-          <button
-            onClick={addCut}
-            className="mt-4 text-primary-600 hover:text-primary-700"
-          >
-            + {t('cutOptimizer.cuts.add')}
-          </button>
+          {/* Add Cut Button or Upgrade Message */}
+          <div className="mt-4">
+            {userPlan === 'free' && cuts.length >= 5 ? (
+              <div className="text-center py-4">
+                <p className="text-gray-600 mb-2">
+                  Faça o upgrade do seu plano para inserir mais cortes
+                </p>
+                <button
+                  onClick={() => window.location.href = '/pricing'}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
+                >
+                  Fazer Upgrade
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={addCut}
+                className="text-primary-600 hover:text-primary-700"
+              >
+                + {t('cutOptimizer.cuts.add')}
+              </button>
+            )}
+          </div>
         </div>
 
         <button
@@ -464,29 +481,6 @@ const CutOptimizer = () => {
               ))}
             </div>
             
-            {/* Add Cut Button or Upgrade Message */}
-            <div className="mt-4">
-              {userPlan === 'free' && cuts.length >= 5 ? (
-                <div className="text-center py-4">
-                  <p className="text-gray-600 mb-2">
-                    Faça o upgrade do seu plano para inserir mais cortes
-                  </p>
-                  <button
-                    onClick={() => window.location.href = '/pricing'}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-primary-600 to-tech-500 hover:from-primary-700 hover:to-tech-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-all duration-200"
-                  >
-                    Fazer Upgrade
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={addCut}
-                  className="text-primary-600 hover:text-primary-700"
-                >
-                  + {t('cutOptimizer.cuts.add')}
-                </button>
-              )}
-            </div>
           </div>
         )}
       </div>
