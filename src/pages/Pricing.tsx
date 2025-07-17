@@ -41,20 +41,41 @@ const Pricing = () => {
           setStripeCustomerId(customerData.customer_id);
         }
 
-        // First check Stripe subscriptions for active plans
+        // Check Stripe subscriptions with detailed logging
+        console.log('Checking Stripe subscriptions for user:', user.email);
         const { data: stripeData, error: stripeError } = await supabase
-          .from('stripe_user_subscriptions')
-          .select('price_id, subscription_status')
+          .from('stripe_subscriptions')
+          .select('price_id, subscription_id, status, customer_id')
+          .eq('customer_id', customerData?.customer_id)
+          .is('deleted_at', null)
           .limit(1)
           .maybeSingle();
 
-        console.log('Stripe subscription data:', stripeData);
+        console.log('Raw Stripe subscription data:', stripeData);
         console.log('Stripe subscription error:', stripeError);
+        
+        // Also check the view for comparison
+        const { data: viewData, error: viewError } = await supabase
+          .from('stripe_user_subscriptions')
+          .select('price_id, subscription_status, customer_id')
+          .limit(1)
+          .maybeSingle();
+        
+        console.log('View subscription data:', viewData);
+        console.log('View subscription error:', viewError);
 
-        if (!stripeError && stripeData) {
+        // Use direct table data first, fallback to view
+        const subscriptionData = stripeData || viewData;
+        const subscriptionError = stripeError || viewError;
+        
+        if (!subscriptionError && subscriptionData) {
+          const priceId = subscriptionData.price_id;
+          const status = subscriptionData.status || subscriptionData.subscription_status;
+          
           console.log('Found Stripe subscription data:', {
-            price_id: stripeData.price_id,
-            status: stripeData.subscription_status
+            price_id: priceId,
+            status: status,
+            customer_id: subscriptionData.customer_id
           });
           
           // Map Stripe price_id to plan name
@@ -64,19 +85,24 @@ const Pricing = () => {
             'price_1RICWFGMh07VKLbnLsU1jkVZ': 'yearly'
           };
           
-          const mappedPlan = planMap[stripeData.price_id] || 'free';
-          console.log('Pricing - Mapped plan from Stripe:', mappedPlan, 'for price_id:', stripeData.price_id, 'status:', stripeData.subscription_status);
-          console.log('Subscription status:', stripeData.subscription_status);
+          const mappedPlan = planMap[priceId] || 'free';
+          console.log('Pricing - Mapped plan from Stripe:', mappedPlan, 'for price_id:', priceId, 'status:', status);
+          console.log('All available price_ids in planMap:', Object.keys(planMap));
           
-          // Only accept 'active' status for paid plans, but allow other statuses for free plan
-          if (stripeData.subscription_status === 'active' || 
-              (mappedPlan === 'free' && ['not_started', 'incomplete', 'trialing'].includes(stripeData.subscription_status))) {
+          // For paid plans, only accept 'active' status
+          // For free plan, accept various statuses
+          const isValidStatus = status === 'active' || 
+              (mappedPlan === 'free' && ['not_started', 'incomplete', 'trialing', 'incomplete_expired'].includes(status));
+          
+          console.log('Is valid status?', isValidStatus, 'for plan:', mappedPlan, 'status:', status);
+          
+          if (isValidStatus) {
             console.log('Setting plan to:', mappedPlan);
             setCurrentPlan(mappedPlan);
             setLoading(false);
             return;
           } else {
-            console.log('Pricing - Stripe subscription not active or invalid status:', stripeData.subscription_status, 'for plan:', mappedPlan);
+            console.log('Pricing - Stripe subscription not active or invalid status:', status, 'for plan:', mappedPlan);
           }
         }
         
