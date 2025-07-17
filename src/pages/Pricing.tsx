@@ -65,18 +65,18 @@ const Pricing = () => {
           };
           
           const mappedPlan = planMap[stripeData.price_id] || 'free';
-          console.log('Mapped plan from Stripe:', mappedPlan, 'for price_id:', stripeData.price_id);
+          console.log('Pricing - Mapped plan from Stripe:', mappedPlan, 'for price_id:', stripeData.price_id, 'status:', stripeData.subscription_status);
           console.log('Subscription status:', stripeData.subscription_status);
           
-          // Accept both 'active' and 'not_started' status for free plan
+          // Only accept 'active' status for paid plans, but allow other statuses for free plan
           if (stripeData.subscription_status === 'active' || 
-              (mappedPlan === 'free' && ['not_started', 'incomplete'].includes(stripeData.subscription_status))) {
+              (mappedPlan === 'free' && ['not_started', 'incomplete', 'trialing'].includes(stripeData.subscription_status))) {
             console.log('Setting plan to:', mappedPlan);
             setCurrentPlan(mappedPlan);
             setLoading(false);
             return;
           } else {
-            console.log('Stripe subscription not active, status:', stripeData.subscription_status);
+            console.log('Pricing - Stripe subscription not active or invalid status:', stripeData.subscription_status, 'for plan:', mappedPlan);
           }
         }
         

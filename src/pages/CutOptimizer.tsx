@@ -70,7 +70,22 @@ const CutOptimizer = () => {
           };
           
           const mappedPlan = planMap[stripeData.price_id] || 'free';
-          setUserPlan(mappedPlan);
+          console.log('CutOptimizer - Mapped plan from Stripe:', mappedPlan, 'for price_id:', stripeData.price_id, 'status:', stripeData.subscription_status);
+          
+          // Only accept 'active' status for paid plans
+          if (stripeData.subscription_status === 'active') {
+            setUserPlan(mappedPlan);
+          } else {
+            console.log('CutOptimizer - Stripe subscription not active, status:', stripeData.subscription_status);
+            // Fall back to regular subscriptions check
+            const { data: subscription } = await supabase
+              .from('subscriptions')
+              .select('plan')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            setUserPlan(subscription?.plan || 'free');
+          }
         } else {
           // If no valid Stripe subscription, check regular subscriptions
           const { data: subscription } = await supabase

@@ -4,6 +4,6 @@ export const STRIPE_PUBLISHABLE_KEY = 'pk_live_51RGVrAGMh07VKLbnt53Y22Xnj7kKzqeH
 
 export const PRICES = {
   free: 'price_1RIDwLGMh07VKLbnujKxoJmN',
-  monthly: 'price_1RICRBGMh07VKLbntwSXXPdM',
+  monthly: 'price_1RICRBGMh07VKLbntwSXXPdM', // Plano Mensal
   yearly: 'price_1RICWFGMh07VKLbnLsU1jkVZ'
 } as const;
