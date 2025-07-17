@@ -109,17 +109,17 @@ const Pricing = () => {
         // If no valid Stripe subscription, check regular subscriptions
         console.log('No active Stripe subscription, checking regular subscriptions...');
         
-        const { data: subscription, error: subscriptionError } = await supabase
+        const { data: subscription, error: regularSubscriptionError } = await supabase
           .from('subscriptions')
           .select('plan')
           .eq('user_id', user.id)
           .maybeSingle();
 
         console.log('Regular subscription data:', subscription);
-        console.log('Regular subscription error:', subscriptionError);
+        console.log('Regular subscription error:', regularSubscriptionError);
 
-        if (subscriptionError) {
-          console.error('Error loading subscription:', subscriptionError);
+        if (regularSubscriptionError) {
+          console.error('Error loading subscription:', regularSubscriptionError);
           setCurrentPlan('free'); // Default to free on error
         } else {
           const plan = subscription?.plan || 'free';
