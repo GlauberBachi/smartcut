@@ -156,7 +156,7 @@ const Admin = () => {
       // Transform session data with emails
       const transformedData = sessionsData.map(session => ({
         ...session,
-        email: userEmailMap[session.user_id] || `Usuário Removido (${session.user_id.substring(0, 8)}...)`,
+        email: userEmailMap[session.user_id] || session.user_id,
         minutes_active: Math.round((new Date().getTime() - new Date(session.login_at).getTime()) / (1000 * 60))
       }));
       
@@ -248,7 +248,7 @@ const Admin = () => {
         
         return {
           ...session,
-          email: email || `Usuário Removido (${session.user_id.substring(0, 8)}...)`,
+          email: email || session.user_id,
           session_duration_minutes: durationMinutes
         };
       });
