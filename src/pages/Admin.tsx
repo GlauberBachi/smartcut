@@ -113,26 +113,61 @@ const Admin = () => {
       const userIds = [...new Set(sessionsData.map(session => session.user_id))];
       console.log('Active session user IDs:', userIds);
       
-      // Fetch user emails
-      const { data: usersData, error: usersError } = await supabase
+      // Fetch user emails from both auth.users and public.users tables
+      const { data: authUsersData, error: authUsersError } = await supabase
         .from('users')
         .select('id, email')
         .in('id', userIds);
       
-      if (usersError) throw usersError;
+      if (authUsersError) {
+        console.error('Error fetching from users table:', authUsersError);
+      }
       
-      console.log('Active session users loaded:', usersData?.length || 0, 'users');
+      console.log('Active session users loaded from users table:', authUsersData?.length || 0, 'users');
+      
+      // Also try to get emails from auth.users for any missing users
+      const authUserIds = (authUsersData || []).map(u => u.id);
+      const missingUserIds = userIds.filter(id => !authUserIds.includes(id));
+      
+      let authUserEmails: any[] = [];
+      if (missingUserIds.length > 0) {
+        console.log('Fetching missing active session users from auth.users:', missingUserIds.length);
+        
+        // Use admin client to fetch from auth.users
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (!authError && authData?.users) {
+          authUserEmails = authData.users
+            .filter(user => missingUserIds.includes(user.id))
+            .map(user => ({ id: user.id, email: user.email }));
+          
+          console.log('Found additional active users from auth.users:', authUserEmails.length);
+        }
+      }
+      
+      // Combine both sources
+      const allUsers = [...(authUsersData || []), ...authUserEmails];
       
       // Create a map of user_id to email
-      const userEmailMap = (usersData || []).reduce((acc, user) => {
+      const userEmailMap = allUsers.reduce((acc, user) => {
         acc[user.id] = user.email;
         return acc;
       }, {} as Record<string, string>);
       
+      // Log any sessions with missing users
+      const sessionsWithMissingUsers = sessionsData.filter(session => !userEmailMap[session.user_id]);
+      if (sessionsWithMissingUsers.length > 0) {
+        console.warn('Active sessions with missing users:', sessionsWithMissingUsers.map(s => ({ 
+          session_id: s.id, 
+          user_id: s.user_id,
+          login_at: s.login_at 
+        })));
+      }
+      
       // Transform session data with emails
       const transformedData = sessionsData.map(session => ({
         ...session,
-        email: userEmailMap[session.user_id] || 'N/A',
+        email: userEmailMap[session.user_id] || `Usuário Removido (${session.user_id.substring(0, 8)}...)`,
         minutes_active: Math.round((new Date().getTime() - new Date(session.login_at).getTime()) / (1000 * 60))
       }));
       
@@ -171,21 +206,56 @@ const Admin = () => {
       const userIds = [...new Set(sessionsData.map(session => session.user_id))];
       console.log('Unique user IDs:', userIds.length);
       
-      // Fetch user emails
-      const { data: usersData, error: usersError } = await supabase
+      // Fetch user emails from both auth.users and public.users tables
+      const { data: authUsersData, error: authUsersError } = await supabase
         .from('users')
         .select('id, email')
         .in('id', userIds);
       
-      if (usersError) throw usersError;
+      if (authUsersError) {
+        console.error('Error fetching from users table:', authUsersError);
+      }
       
-      console.log('User data loaded:', usersData?.length || 0, 'users');
+      console.log('User data loaded from users table:', authUsersData?.length || 0, 'users');
+      
+      // Also try to get emails from auth.users for any missing users
+      const authUserIds = (authUsersData || []).map(u => u.id);
+      const missingUserIds = userIds.filter(id => !authUserIds.includes(id));
+      
+      let authUserEmails: any[] = [];
+      if (missingUserIds.length > 0) {
+        console.log('Fetching missing users from auth.users:', missingUserIds.length);
+        
+        // Use admin client to fetch from auth.users
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+        
+        if (!authError && authData?.users) {
+          authUserEmails = authData.users
+            .filter(user => missingUserIds.includes(user.id))
+            .map(user => ({ id: user.id, email: user.email }));
+          
+          console.log('Found additional users from auth.users:', authUserEmails.length);
+        }
+      }
+      
+      // Combine both sources
+      const allUsers = [...(authUsersData || []), ...authUserEmails];
       
       // Create a map of user_id to email
-      const userEmailMap = (usersData || []).reduce((acc, user) => {
+      const userEmailMap = allUsers.reduce((acc, user) => {
         acc[user.id] = user.email;
         return acc;
       }, {} as Record<string, string>);
+      
+      // Log any sessions with missing users
+      const sessionsWithMissingUsers = sessionsData.filter(session => !userEmailMap[session.user_id]);
+      if (sessionsWithMissingUsers.length > 0) {
+        console.warn('Sessions with missing users:', sessionsWithMissingUsers.map(s => ({ 
+          session_id: s.id, 
+          user_id: s.user_id,
+          login_at: s.login_at 
+        })));
+      }
       
       // Transform session data with emails and duration
       const transformedData = sessionsData.map(session => {
@@ -193,9 +263,14 @@ const Admin = () => {
         const logoutTime = session.logout_at ? new Date(session.logout_at).getTime() : new Date().getTime();
         const durationMinutes = Math.round((logoutTime - loginTime) / (1000 * 60));
         
+        const email = userEmailMap[session.user_id];
+        if (!email) {
+          console.warn(`No email found for user_id: ${session.user_id} in session ${session.id}`);
+        }
+        
         return {
           ...session,
-          email: userEmailMap[session.user_id] || 'N/A',
+          email: email || `Usuário Removido (${session.user_id.substring(0, 8)}...)`,
           session_duration_minutes: durationMinutes
         };
       });
