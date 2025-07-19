@@ -19,6 +19,25 @@ const getUserIP = async (): Promise<string | null> => {
 // Função para criar sessão de usuário
 const createUserSession = async (userId: string) => {
   try {
+    // Primeiro, finalizar todas as sessões ativas existentes para este usuário
+    console.log('Finalizing existing active sessions for user:', userId);
+    const { error: updateError } = await supabase
+      .from('user_sessions')
+      .update({
+        logout_at: new Date().toISOString(),
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('is_active', true);
+    
+    if (updateError) {
+      console.error('Error finalizing existing sessions:', updateError);
+    } else {
+      console.log('Existing sessions finalized for user:', userId);
+    }
+    
+    // Agora criar a nova sessão
     const ip = await getUserIP();
     const userAgent = navigator.userAgent;
     

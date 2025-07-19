@@ -88,7 +88,7 @@ const Admin = () => {
       // First, get session data
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('user_sessions')
-        .select('id, user_id, login_at, ip_address, user_agent, is_active')
+        .select('id, user_id, login_at, ip_address, user_agent, is_active, created_at')
         .eq('is_active', true)
         .order('login_at', { ascending: false });
 
@@ -100,6 +100,14 @@ const Admin = () => {
         setActiveSessions([]);
         return;
       }
+      
+      // Log para debug - verificar se há duplicatas
+      const userCounts = sessionsData.reduce((acc, session) => {
+        acc[session.user_id] = (acc[session.user_id] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+      
+      console.log('Active sessions per user:', userCounts);
       
       // Get unique user IDs
       const userIds = [...new Set(sessionsData.map(session => session.user_id))];
