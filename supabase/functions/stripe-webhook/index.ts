@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const rawBody = await req.text();
 
     // Verify the webhook signature
-    const event = stripe.webhooks.constructEvent(
+    const event = await stripe.webhooks.constructEventAsync(
       rawBody,
       signature,
       webhookSecret
