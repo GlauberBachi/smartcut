@@ -84,7 +84,6 @@ const Admin = () => {
     try {
       setSessionsLoading(true);
       
-      // Usar query direta se a view não existir
       const { data, error } = await supabase
         .from('user_sessions')
         .select(`
@@ -94,14 +93,13 @@ const Admin = () => {
           ip_address,
           user_agent,
           is_active,
-          users!inner(email)
+          users(email)
         `)
         .eq('is_active', true)
         .order('login_at', { ascending: false });
 
       if (error) throw error;
       
-      // Transformar os dados para o formato esperado
       const transformedData = (data || []).map(session => ({
         ...session,
         email: session.users?.email || 'N/A',
@@ -111,7 +109,6 @@ const Admin = () => {
       setActiveSessions(transformedData);
     } catch (error: any) {
       console.error('Error loading active sessions:', error);
-      // Se der erro, apenas limpar a lista sem mostrar erro
       setActiveSessions([]);
     } finally {
       setSessionsLoading(false);
@@ -122,7 +119,6 @@ const Admin = () => {
     try {
       setSessionsLoading(true);
       
-      // Usar query direta se a view não existir
       const { data, error } = await supabase
         .from('user_sessions')
         .select(`
@@ -133,14 +129,13 @@ const Admin = () => {
           ip_address,
           user_agent,
           is_active,
-          users!inner(email)
+          users(email)
         `)
         .order('login_at', { ascending: false })
         .limit(100);
 
       if (error) throw error;
       
-      // Transformar os dados para o formato esperado
       const transformedData = (data || []).map(session => {
         const loginTime = new Date(session.login_at).getTime();
         const logoutTime = session.logout_at ? new Date(session.logout_at).getTime() : new Date().getTime();
@@ -156,7 +151,6 @@ const Admin = () => {
       setSessionHistory(transformedData);
     } catch (error: any) {
       console.error('Error loading session history:', error);
-      // Se der erro, apenas limpar a lista sem mostrar erro
       setSessionHistory([]);
     } finally {
       setSessionsLoading(false);
