@@ -83,6 +83,7 @@ const Admin = () => {
   const loadActiveSessions = async () => {
     try {
       setSessionsLoading(true);
+      console.log('Loading active sessions...');
       
       // First, get session data
       const { data: sessionsData, error: sessionsError } = await supabase
@@ -93,6 +94,8 @@ const Admin = () => {
 
       if (sessionsError) throw sessionsError;
       
+      console.log('Active sessions data loaded:', sessionsData?.length || 0, 'records');
+      
       if (!sessionsData || sessionsData.length === 0) {
         setActiveSessions([]);
         return;
@@ -100,6 +103,7 @@ const Admin = () => {
       
       // Get unique user IDs
       const userIds = [...new Set(sessionsData.map(session => session.user_id))];
+      console.log('Active session user IDs:', userIds);
       
       // Fetch user emails
       const { data: usersData, error: usersError } = await supabase
@@ -108,6 +112,8 @@ const Admin = () => {
         .in('id', userIds);
       
       if (usersError) throw usersError;
+      
+      console.log('Active session users loaded:', usersData?.length || 0, 'users');
       
       // Create a map of user_id to email
       const userEmailMap = (usersData || []).reduce((acc, user) => {
@@ -122,6 +128,7 @@ const Admin = () => {
         minutes_active: Math.round((new Date().getTime() - new Date(session.login_at).getTime()) / (1000 * 60))
       }));
       
+      console.log('Active sessions transformed:', transformedData.length, 'records');
       setActiveSessions(transformedData);
     } catch (error: any) {
       console.error('Error loading active sessions:', error);
@@ -134,15 +141,18 @@ const Admin = () => {
   const loadSessionHistory = async () => {
     try {
       setSessionsLoading(true);
+      console.log('Loading session history...');
       
       // First, get session data
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('user_sessions')
         .select('id, user_id, login_at, logout_at, ip_address, user_agent, is_active')
         .order('login_at', { ascending: false })
-        .limit(100);
+        .limit(50);
 
       if (sessionsError) throw sessionsError;
+      
+      console.log('Session data loaded:', sessionsData?.length || 0, 'records');
       
       if (!sessionsData || sessionsData.length === 0) {
         setSessionHistory([]);
@@ -151,6 +161,7 @@ const Admin = () => {
       
       // Get unique user IDs
       const userIds = [...new Set(sessionsData.map(session => session.user_id))];
+      console.log('Unique user IDs:', userIds.length);
       
       // Fetch user emails
       const { data: usersData, error: usersError } = await supabase
@@ -159,6 +170,8 @@ const Admin = () => {
         .in('id', userIds);
       
       if (usersError) throw usersError;
+      
+      console.log('User data loaded:', usersData?.length || 0, 'users');
       
       // Create a map of user_id to email
       const userEmailMap = (usersData || []).reduce((acc, user) => {
@@ -179,6 +192,7 @@ const Admin = () => {
         };
       });
       
+      console.log('Transformed session data:', transformedData.length, 'records');
       setSessionHistory(transformedData);
     } catch (error: any) {
       console.error('Error loading session history:', error);

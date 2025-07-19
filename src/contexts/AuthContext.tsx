@@ -22,7 +22,7 @@ const createUserSession = async (userId: string) => {
     const ip = await getUserIP();
     const userAgent = navigator.userAgent;
     
-    // Verificar se a função RPC existe antes de chamar
+    console.log('Creating user session for:', userId);
     const { data, error } = await supabase
       .from('user_sessions')
       .insert({
@@ -34,18 +34,19 @@ const createUserSession = async (userId: string) => {
       });
     
     if (error) {
-      console.warn('Error creating user session:', error);
+      console.error('Error creating user session:', error);
     } else {
-      console.log('User session created successfully');
+      console.log('User session created successfully for:', userId);
     }
   } catch (error) {
-    console.warn('Error in createUserSession:', error);
+    console.error('Error in createUserSession:', error);
   }
 };
 
 // Função para finalizar sessão de usuário
 const endUserSession = async (userId: string) => {
   try {
+    console.log('Ending user session for:', userId);
     // Atualizar sessões ativas para inativas
     const { error } = await supabase
       .from('user_sessions')
@@ -58,12 +59,12 @@ const endUserSession = async (userId: string) => {
       .eq('is_active', true);
     
     if (error) {
-      console.warn('Error ending user session:', error);
+      console.error('Error ending user session:', error);
     } else {
-      console.log('User session ended successfully');
+      console.log('User session ended successfully for:', userId);
     }
   } catch (error) {
-    console.warn('Error in endUserSession:', error);
+    console.error('Error in endUserSession:', error);
   }
 };
 interface AuthContextType {
@@ -318,15 +319,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Gerenciar sessões de usuário
       if (event === 'SIGNED_IN' && currentUser) {
         // Criar nova sessão quando usuário faz login
-        // Fazer isso de forma assíncrona para não bloquear o login
-        createUserSession(currentUser.id).catch(err => 
-          console.warn('Failed to create user session:', err)
-        );
+        // Fazer isso de forma assíncrona para não bloquear o login, mas com delay para garantir que o usuário existe
+        setTimeout(() => {
+          createUserSession(currentUser.id).catch(err => 
+            console.error('Failed to create user session:', err)
+          );
+        }, 1000); // Delay de 1 segundo para garantir que o usuário foi criado no banco
       } else if (event === 'SIGNED_OUT' && previousUser) {
         // Finalizar sessão quando usuário faz logout
         // Fazer isso de forma assíncrona para não bloquear o logout
         endUserSession(previousUser.id).catch(err => 
-          console.warn('Failed to end user session:', err)
+          console.error('Failed to end user session:', err)
         );
       }
       
