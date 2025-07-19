@@ -84,25 +84,41 @@ const Admin = () => {
     try {
       setSessionsLoading(true);
       
-      const { data, error } = await supabase
+      // First, get session data
+      const { data: sessionsData, error: sessionsError } = await supabase
         .from('user_sessions')
-        .select(`
-          id,
-          user_id,
-          login_at,
-          ip_address,
-          user_agent,
-          is_active,
-          users(email)
-        `)
+        .select('id, user_id, login_at, ip_address, user_agent, is_active')
         .eq('is_active', true)
         .order('login_at', { ascending: false });
 
-      if (error) throw error;
+      if (sessionsError) throw sessionsError;
       
-      const transformedData = (data || []).map(session => ({
+      if (!sessionsData || sessionsData.length === 0) {
+        setActiveSessions([]);
+        return;
+      }
+      
+      // Get unique user IDs
+      const userIds = [...new Set(sessionsData.map(session => session.user_id))];
+      
+      // Fetch user emails
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, email')
+        .in('id', userIds);
+      
+      if (usersError) throw usersError;
+      
+      // Create a map of user_id to email
+      const userEmailMap = (usersData || []).reduce((acc, user) => {
+        acc[user.id] = user.email;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      // Transform session data with emails
+      const transformedData = sessionsData.map(session => ({
         ...session,
-        email: session.users?.email || 'N/A',
+        email: userEmailMap[session.user_id] || 'N/A',
         minutes_active: Math.round((new Date().getTime() - new Date(session.login_at).getTime()) / (1000 * 60))
       }));
       
@@ -119,31 +135,46 @@ const Admin = () => {
     try {
       setSessionsLoading(true);
       
-      const { data, error } = await supabase
+      // First, get session data
+      const { data: sessionsData, error: sessionsError } = await supabase
         .from('user_sessions')
-        .select(`
-          id,
-          user_id,
-          login_at,
-          logout_at,
-          ip_address,
-          user_agent,
-          is_active,
-          users(email)
-        `)
+        .select('id, user_id, login_at, logout_at, ip_address, user_agent, is_active')
         .order('login_at', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
+      if (sessionsError) throw sessionsError;
       
-      const transformedData = (data || []).map(session => {
+      if (!sessionsData || sessionsData.length === 0) {
+        setSessionHistory([]);
+        return;
+      }
+      
+      // Get unique user IDs
+      const userIds = [...new Set(sessionsData.map(session => session.user_id))];
+      
+      // Fetch user emails
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, email')
+        .in('id', userIds);
+      
+      if (usersError) throw usersError;
+      
+      // Create a map of user_id to email
+      const userEmailMap = (usersData || []).reduce((acc, user) => {
+        acc[user.id] = user.email;
+        return acc;
+      }, {} as Record<string, string>);
+      
+      // Transform session data with emails and duration
+      const transformedData = sessionsData.map(session => {
         const loginTime = new Date(session.login_at).getTime();
         const logoutTime = session.logout_at ? new Date(session.logout_at).getTime() : new Date().getTime();
         const durationMinutes = Math.round((logoutTime - loginTime) / (1000 * 60));
         
         return {
           ...session,
-          email: session.users?.email || 'N/A',
+          email: userEmailMap[session.user_id] || 'N/A',
           session_duration_minutes: durationMinutes
         };
       });
