@@ -2,6 +2,56 @@ import React, { createContext, useContext, useEffect, useState, useRef } from 'r
 import { User, AuthError } from '@supabase/supabase-js';
 import { supabase, supabaseUrl } from '../lib/supabaseClient';
 
+// Função para obter IP do usuário (aproximado)
+const getUserIP = async (): Promise<string | null> => {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip;
+  } catch (error) {
+    console.warn('Could not get user IP:', error);
+    return null;
+  }
+};
+
+// Função para criar sessão de usuário
+const createUserSession = async (userId: string) => {
+  try {
+    const ip = await getUserIP();
+    const userAgent = navigator.userAgent;
+    
+    const { data, error } = await supabase.rpc('create_user_session', {
+      p_user_id: userId,
+      p_ip_address: ip,
+      p_user_agent: userAgent
+    });
+    
+    if (error) {
+      console.warn('Error creating user session:', error);
+    } else {
+      console.log('User session created successfully');
+    }
+  } catch (error) {
+    console.warn('Error in createUserSession:', error);
+  }
+};
+
+// Função para finalizar sessão de usuário
+const endUserSession = async (userId: string) => {
+  try {
+    const { error } = await supabase.rpc('end_user_session', {
+      p_user_id: userId
+    });
+    
+    if (error) {
+      console.warn('Error ending user session:', error);
+    } else {
+      console.log('User session ended successfully');
+    }
+  } catch (error) {
+    console.warn('Error in endUserSession:', error);
+  }
+};
 interface AuthContextType {
   user: User | null;
   loading: boolean;
@@ -248,7 +298,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       console.log(`Auth state change: ${event}`, session?.user?.id);
       
       const currentUser = session?.user ?? null;
+      const previousUser = user;
       setUser(currentUser);
+      
+      // Gerenciar sessões de usuário
+      if (event === 'SIGNED_IN' && currentUser) {
+        // Criar nova sessão quando usuário faz login
+        await createUserSession(currentUser.id);
+      } else if (event === 'SIGNED_OUT' && previousUser) {
+        // Finalizar sessão quando usuário faz logout
+        await endUserSession(previousUser.id);
+      }
       
       // Processa criação de usuário apenas no SIGNED_IN e se não estiver em progresso
       if (session?.access_token && currentUser && event === 'SIGNED_IN' && !userCreationInProgress.current) {
@@ -427,6 +487,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
+      // Finalizar sessão antes do logout
+      if (user?.id) {
+        await endUserSession(user.id);
+      }
+      
       // Reset de todos os estados
       userCreationInProgress.current = false;
       processedUsers.current.clear();
