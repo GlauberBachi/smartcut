@@ -22,8 +22,17 @@ const Notifications = () => {
 
   useEffect(() => {
     console.log('Notifications component mounted');
-    if (!user) return;
-    loadNotifications();
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    
+    // Adicionar delay para garantir que o usuário está completamente carregado
+    const timer = setTimeout(() => {
+      loadNotifications();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [user]);
 
   const loadNotifications = async () => {

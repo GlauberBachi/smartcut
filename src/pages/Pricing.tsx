@@ -17,6 +17,18 @@ const Pricing = () => {
 
   useEffect(() => {
     console.log('Pricing component mounted');
+    
+    if (!user) {
+      console.log('No user found in Pricing component');
+      setLoading(false);
+      return;
+    }
+
+    // Adicionar delay para garantir que o usuário está completamente carregado
+    const timer = setTimeout(() => {
+      loadUserPlan();
+    }, 100);
+    
     const loadUserPlan = async () => {
       if (!user) {
         console.log('No user found in Pricing component');
@@ -109,7 +121,7 @@ const Pricing = () => {
       }
     };
 
-    loadUserPlan();
+    return () => clearTimeout(timer);
   }, [user]);
 
   const handleSubscribe = async (planType: 'monthly' | 'yearly') => {

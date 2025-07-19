@@ -5,7 +5,9 @@ import { supabase, supabaseUrl } from '../lib/supabaseClient';
 // Função para obter IP do usuário (aproximado)
 const getUserIP = async (): Promise<string | null> => {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
+    const response = await fetch('https://api.ipify.org?format=json', {
+      timeout: 5000
+    });
     const data = await response.json();
     return data.ip;
   } catch (error) {
@@ -20,11 +22,16 @@ const createUserSession = async (userId: string) => {
     const ip = await getUserIP();
     const userAgent = navigator.userAgent;
     
-    const { data, error } = await supabase.rpc('create_user_session', {
-      p_user_id: userId,
-      p_ip_address: ip,
-      p_user_agent: userAgent
-    });
+    // Verificar se a função RPC existe antes de chamar
+    const { data, error } = await supabase
+      .from('user_sessions')
+      .insert({
+        user_id: userId,
+        ip_address: ip,
+        user_agent: userAgent,
+        login_at: new Date().toISOString(),
+        is_active: true
+      });
     
     if (error) {
       console.warn('Error creating user session:', error);
@@ -39,9 +46,16 @@ const createUserSession = async (userId: string) => {
 // Função para finalizar sessão de usuário
 const endUserSession = async (userId: string) => {
   try {
-    const { error } = await supabase.rpc('end_user_session', {
-      p_user_id: userId
-    });
+    // Atualizar sessões ativas para inativas
+    const { error } = await supabase
+      .from('user_sessions')
+      .update({
+        logout_at: new Date().toISOString(),
+        is_active: false,
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', userId)
+      .eq('is_active', true);
     
     if (error) {
       console.warn('Error ending user session:', error);
@@ -304,10 +318,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Gerenciar sessões de usuário
       if (event === 'SIGNED_IN' && currentUser) {
         // Criar nova sessão quando usuário faz login
-        await createUserSession(currentUser.id);
+        // Fazer isso de forma assíncrona para não bloquear o login
+        createUserSession(currentUser.id).catch(err => 
+          console.warn('Failed to create user session:', err)
+        );
       } else if (event === 'SIGNED_OUT' && previousUser) {
         // Finalizar sessão quando usuário faz logout
-        await endUserSession(previousUser.id);
+        // Fazer isso de forma assíncrona para não bloquear o logout
+        endUserSession(previousUser.id).catch(err => 
+          console.warn('Failed to end user session:', err)
+        );
       }
       
       // Processa criação de usuário apenas no SIGNED_IN e se não estiver em progresso

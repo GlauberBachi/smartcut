@@ -32,7 +32,12 @@ const PersonalInfo = () => {
       return;
     }
     
-    loadProfile();
+    // Adicionar delay para garantir que o usuário está completamente carregado
+    const timer = setTimeout(() => {
+      loadProfile();
+    }, 100);
+    
+    return () => clearTimeout(timer);
   }, [user, navigate]);
 
   const loadProfile = async () => {
