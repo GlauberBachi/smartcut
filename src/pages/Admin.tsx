@@ -129,24 +129,13 @@ const Admin = () => {
       const authUserIds = (authUsersData || []).map(u => u.id);
       const missingUserIds = userIds.filter(id => !authUserIds.includes(id));
       
-      let authUserEmails: any[] = [];
+      // Log missing users but don't try to fetch from auth.users (requires service role)
       if (missingUserIds.length > 0) {
-        console.log('Fetching missing active session users from auth.users:', missingUserIds.length);
-        
-        // Use admin client to fetch from auth.users
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-        
-        if (!authError && authData?.users) {
-          authUserEmails = authData.users
-            .filter(user => missingUserIds.includes(user.id))
-            .map(user => ({ id: user.id, email: user.email }));
-          
-          console.log('Found additional active users from auth.users:', authUserEmails.length);
-        }
+        console.warn('Missing users in public.users table:', missingUserIds);
       }
       
       // Combine both sources
-      const allUsers = [...(authUsersData || []), ...authUserEmails];
+      const allUsers = authUsersData || [];
       
       // Create a map of user_id to email
       const userEmailMap = allUsers.reduce((acc, user) => {
@@ -222,24 +211,13 @@ const Admin = () => {
       const authUserIds = (authUsersData || []).map(u => u.id);
       const missingUserIds = userIds.filter(id => !authUserIds.includes(id));
       
-      let authUserEmails: any[] = [];
+      // Log missing users but don't try to fetch from auth.users (requires service role)
       if (missingUserIds.length > 0) {
-        console.log('Fetching missing users from auth.users:', missingUserIds.length);
-        
-        // Use admin client to fetch from auth.users
-        const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-        
-        if (!authError && authData?.users) {
-          authUserEmails = authData.users
-            .filter(user => missingUserIds.includes(user.id))
-            .map(user => ({ id: user.id, email: user.email }));
-          
-          console.log('Found additional users from auth.users:', authUserEmails.length);
-        }
+        console.warn('Missing users in public.users table:', missingUserIds);
       }
       
       // Combine both sources
-      const allUsers = [...(authUsersData || []), ...authUserEmails];
+      const allUsers = authUsersData || [];
       
       // Create a map of user_id to email
       const userEmailMap = allUsers.reduce((acc, user) => {
