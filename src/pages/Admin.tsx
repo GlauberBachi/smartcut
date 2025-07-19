@@ -187,13 +187,14 @@ const Admin = () => {
       console.log('Session data loaded:', sessionsData?.length || 0, 'records');
       
       if (!sessionsData || sessionsData.length === 0) {
+        console.log('No session data found');
         setSessionHistory([]);
         return;
       }
       
       // Get unique user IDs
       const userIds = [...new Set(sessionsData.map(session => session.user_id))];
-      console.log('Unique user IDs:', userIds.length);
+      console.log('Unique user IDs:', userIds.length, 'IDs:', userIds);
       
       // Fetch user emails from both auth.users and public.users tables
       const { data: authUsersData, error: authUsersError } = await supabase
@@ -205,7 +206,7 @@ const Admin = () => {
         console.error('Error fetching from users table:', authUsersError);
       }
       
-      console.log('User data loaded from users table:', authUsersData?.length || 0, 'users');
+      console.log('User data loaded from users table:', authUsersData?.length || 0, 'users', authUsersData);
       
       // Also try to get emails from auth.users for any missing users
       const authUserIds = (authUsersData || []).map(u => u.id);
@@ -214,6 +215,7 @@ const Admin = () => {
       // Log missing users but don't try to fetch from auth.users (requires service role)
       if (missingUserIds.length > 0) {
         console.warn('Missing users in public.users table:', missingUserIds);
+        console.warn('These user IDs have sessions but no corresponding user record');
       }
       
       // Combine both sources
